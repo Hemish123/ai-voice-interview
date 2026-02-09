@@ -1,0 +1,390 @@
+import random
+import re
+
+from core.services.llm_engine import LLMEngine
+from core.services import evaluator
+
+
+# -------------------------------------------------
+# CONFIG
+# -------------------------------------------------
+
+SCREENING_TOPICS_COUNT = 5
+HR_MIN = 2
+HR_MAX = 5
+
+TOTAL_MIN = 15
+TOTAL_MAX = 20
+
+llm_engine = LLMEngine()
+
+
+# =====================================================
+# INTENT PATTERNS
+# =====================================================
+
+END_PATTERNS = ["end interview", "stop interview", "quit", "exit"]
+REPEAT_PATTERNS = ["repeat", "say again", "once again"]
+SKIP_PATTERNS = ["skip", "skip the question", "next", "move on", "pass"]
+
+
+def _contains(text, patterns):
+    return bool(text) and any(p in text.lower() for p in patterns)
+
+
+
+
+
+# =====================================================
+# MAIN ENTRY
+# =====================================================
+
+def get_next_question(session):
+
+    # ---------------- INIT SAFETY ----------------
+
+    if getattr(session, "total_questions_asked", None) is None:
+        session.total_questions_asked = 0
+
+    if getattr(session, "total_limit", None) is None:
+        session.total_limit = random.randint(TOTAL_MIN, TOTAL_MAX)
+
+    # ---------------- GLOBAL HARD STOP ----------------
+
+    HARD_END = [
+        "end interview",
+        "stop interview",
+        "end the interview",
+        "stop the interview",
+        "end",
+        "stop",
+        "quit",
+        "exit",
+    ]
+
+    if _contains(session.last_answer, HARD_END):
+        session.phase = "finished"
+        session.finished = True
+        return _q(
+            "end",
+            f"Thank you {session.candidate_name or ''}. "
+            "The interview has now ended. Have a great day."
+        )
+
+    # ---------------- GLOBAL REPEAT ----------------
+
+    if _contains(session.last_answer, REPEAT_PATTERNS):
+        if hasattr(session, "last_question"):
+            return session.last_question
+
+    # ---------------- INTRO ----------------
+
+    # -------------------------------------------------
+    # Q1 WELCOME
+    # -------------------------------------------------
+
+    if session.phase == "intro":
+
+        session.phase = "knowcraft_intro"
+
+        return _q(
+            "welcome",
+            f"Hello and welcome to {session.company}. "
+            f"This interview is for the {session.role_label} role."
+        )
+
+    # -------------------------------------------------
+    # Q1.1 KNOWCRAFT QUESTION
+    # -------------------------------------------------
+
+    if session.phase == "knowcraft_intro":
+
+        session.phase = "await_self_intro"
+
+        return _q(
+            "knowcraft",
+            "Can you tell me what you know about KnowCraft?"
+        )
+
+    # -------------------------------------------------
+    # Q1.2 SELF INTRO
+    # -------------------------------------------------
+
+    if session.phase == "await_self_intro":
+
+        session.phase = "await_name"
+
+        return _q(
+            "self_intro",
+            "Now please tell me about yourself."
+        )
+
+    # ---------------- NAME ----------------
+
+    if session.phase == "await_name":
+
+        session.candidate_name = (
+            _extract_name(session.last_answer) or "there"
+        )
+
+        session.phase = "role_check"
+
+        return _inc(session, _q(
+            "role_confirm",
+            f"Thank you {session.candidate_name}. "
+            f"Do you have knowledge about the {session.role_label} role?"
+        ))
+
+    # ---------------- ROLE GATE ----------------
+
+    if session.phase == "role_check":
+
+        if not evaluator.evaluate_role_confirmation(
+            session.last_answer
+        ):
+
+            session.phase = "finished"
+            session.finished = True
+
+            return _q(
+                "exit",
+                f"Thank you {session.candidate_name}. "
+                "Our team will be Contact you. "
+                "Have a great day."
+            )
+
+        session.phase = "education"
+
+    # ---------------- EDUCATION ----------------
+
+    if session.phase == "education":
+
+        session.phase = "screening_topics"
+
+        return _inc(session, _q(
+            "education",
+            f"{session.candidate_name}, can you tell me about your education?"
+        ))
+
+
+    # =====================================================
+    # SCREENING TOPICS
+    # =====================================================
+
+    if session.phase == "screening_topics":
+
+        if not hasattr(session, "topics_asked"):
+            session.topics_asked = []
+            session.current_topic = None
+            session.awaiting_experience = False
+
+               # ---- handle answer to familiarity ----
+        if session.awaiting_experience:
+
+            session.awaiting_experience = False
+            ans = (session.last_answer or "").lower()
+
+            # -------------------------------
+            # HARD NEGATIVE FILTER  ✅ NEW
+            # -------------------------------
+            HARD_NO = [
+                "don't know",
+                "do not know",
+                "no idea",
+                "not familiar",
+                "never worked",
+                "no experience",
+                "zero experience",
+                "0 experience",
+                "not worked",
+            ]
+
+            # SKIP / HARD NO → DROP TOPIC
+            if (
+                any(p in ans for p in SKIP_PATTERNS)
+                or any(p in ans for p in HARD_NO)
+            ):
+                session.current_topic = None
+
+            else:
+                positive = evaluator.is_positive(ans)
+
+                if positive:
+
+                    try:
+                        text = llm_engine.generate_topic_experience_question(
+                            role=session.role_label,
+                            topic=session.current_topic,
+                        )
+                    except Exception:
+                        session.current_topic = None
+                        return get_next_question(session)
+
+                    return _inc(session, _q(
+                        f"exp-{session.current_topic}",
+                        text,
+                        source="llm",
+                    ))
+
+                session.current_topic = None
+
+
+        # ---- new topic ----
+        if len(session.topics_asked) < SCREENING_TOPICS_COUNT:
+
+            topic = llm_engine.pick_next_topic(
+                role=session.role_label,
+                exclude=session.topics_asked,
+            )
+
+            session.topics_asked.append(topic)
+            session.current_topic = topic
+            session.awaiting_experience = True
+
+            try:
+                text = llm_engine.generate_topic_familiarity_question(
+                    role=session.role_label,
+                    topic=topic,
+                )
+            except Exception:
+                return get_next_question(session)
+
+            return _inc(session, _q(
+                f"topic-{topic}",
+                text,
+                source="llm",
+            ))
+
+        session.phase = "hr_llm"
+
+
+    # =====================================================
+    # HR BLOCK
+    # =====================================================
+
+    if session.phase == "hr_llm":
+
+        if getattr(session, "llm_hr_count", None) is None:
+            session.llm_hr_count = 0
+
+        if getattr(session, "hr_limit", None) is None:
+            session.hr_limit = random.randint(HR_MIN, HR_MAX)
+
+        # -------------------------------
+        # FIXED FINAL HR QUESTIONS
+        # -------------------------------
+        if getattr(session, "final_hr_queue", None) is None:
+            session.final_hr_queue = [
+                # 1️⃣ new
+                "What is your current job location?",
+                # 2️⃣ new
+                "Where is your hometown located?",
+
+                # 3️⃣ existing
+                "What is your current notice period, and when would you be available to start if offered the position?",
+                # 4️⃣ existing
+                "What was your last monthl in-hand salary?",
+                # 5️⃣ existing
+                "What are your hobbies or interests outside of work?",
+
+                # 6️⃣ new
+                "Are you aware of any AI tools that help you in your daily work?",
+                "Are you Open to work from office ?"
+            ]
+
+        # -------------------------------
+        # LLM HR QUESTIONS
+        # -------------------------------
+        if session.llm_hr_count < session.hr_limit:
+
+            try:
+                text = llm_engine.generate_hr_screening_question(
+                    role=session.role_label
+                )
+            except Exception:
+                text = "What motivates you to join this organization?"
+
+            # -------------------------------
+            # 🚫 BLOCK NOTICE FROM LLM
+            # -------------------------------
+            if "notice period" in text.lower():
+
+                # skip LLM notice → go to final HR queue
+                session.phase = "final_hr"
+                return get_next_question(session)
+
+            session.llm_hr_count += 1
+
+            return _inc(session, _q(
+                f"hr-{session.llm_hr_count}",
+                text,
+                source="llm",
+            ))
+
+        session.phase = "final_hr"
+
+
+    # =====================================================
+    # FINAL HR
+    # =====================================================
+
+    if session.phase == "final_hr":
+
+        if session.final_hr_queue:
+
+            return _inc(session, _q(
+                f"hr-final-{len(session.final_hr_queue)}",
+                session.final_hr_queue.pop(0),
+                source="system",
+            ))
+
+        session.phase = "finished"
+        session.finished = True
+
+
+    # =====================================================
+    # END
+    # =====================================================
+
+    if session.phase == "finished":
+
+        return _q(
+            "end",
+            f"Thank you {session.candidate_name}. "
+            "Our team will be Contact you Soon. "
+            "We appreciate your time."
+        )
+
+    raise RuntimeError(f"Unknown phase: {session.phase}")
+
+
+
+# =====================================================
+# HELPERS
+# =====================================================
+
+def _inc(session, q):
+    session.total_questions_asked += 1
+    session.last_question = q
+    return q
+
+
+def _q(qid, text, source="system"):
+    return {"id": qid, "text": text, "source": source}
+
+
+def _extract_name(answer):
+
+    if not answer:
+        return None
+
+    for pat in [
+        r"my name is ([a-zA-Z]+)",
+        r"i am ([a-zA-Z]+)",
+        r"this is ([a-zA-Z]+)",
+    ]:
+        m = re.search(pat, answer.lower())
+        if m:
+            return m.group(1).capitalize()
+
+    return None

@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AI Voice Interviewer</title>
+<style>
+/* ===============================
+   GLOBAL
+================================ */
+body {
+  margin: 0;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: radial-gradient(circle at top, #0f172a, #020617 70%);
+  color: #e5e7eb;
+}
+
+.container {
+  max-width: 920px;
+  margin: auto;
+  padding: 40px 20px;
+}
+
+/* ===============================
+   HEADER
+================================ */
+.header {
+  text-align: center;
+  margin-bottom: 35px;
+}
+
+.header h1 {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.header p {
+  color: #94a3b8;
+  margin-top: 8px;
+  font-size: 15px;
+}
+
+/* ===============================
+   CARD
+================================ */
+.card {
+  background: linear-gradient(180deg, #020617, #020617);
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.04),
+    0 20px 40px rgba(0,0,0,0.6);
+}
+
+/* ===============================
+   FORM
+================================ */
+label {
+  font-size: 13px;
+  color: #cbd5f5;
+}
+
+select, input {
+  width: 100%;
+  margin-top: 6px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #020617;
+  color: #e5e7eb;
+  border: 1px solid #1e293b;
+  font-size: 15px;
+}
+
+select:focus, input:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+button {
+  width: 100%;
+  padding: 13px;
+  border-radius: 8px;
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(37,99,235,0.4);
+}
+
+/* ===============================
+   CHAT AREA
+================================ */
+.chat {
+  margin-top: 10px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+/* ===============================
+   BOT MESSAGE
+================================ */
+.bot {
+  background: #0e5461;
+  border-left: 4px solid #22c55e;
+  padding: 14px 16px;
+  border-radius: 10px;
+  margin-bottom: 14px;
+  max-width: 75%;
+  box-shadow: 0 10px 25px rgba(49, 32, 71, 0.4);
+}
+
+.bot::before {
+  content: "🤖 AI Interviewer";
+  display: block;
+  font-size: 12px;
+  color: #22c55e;
+  margin-bottom: 6px;
+}
+
+/* ===============================
+   USER MESSAGE
+================================ */
+.user {
+  background: #2a3359;
+  border-right: 4px solid #3b82f6;
+  padding: 14px 16px;
+  border-radius: 10px;
+  margin-bottom: 14px;
+  margin-left: auto;
+  max-width: 75%;
+  text-align: right;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+}
+
+.user::before {
+  content: "👤 Candidate";
+  display: block;
+  font-size: 12px;
+  color: #3b82f6;
+  margin-bottom: 6px;
+}
+
+/* ===============================
+   FOOTER INPUT
+================================ */
+.footer {
+  margin-top: 14px;
+}
+
+.footer input {
+  background: #020617;
+  border: 1px solid #1e293b;
+  color: #94a3b8;
+  text-align: center;
+  font-style: italic;
+}
+
+/* ===============================
+   STATUS FEEDBACK
+================================ */
+.footer input::placeholder {
+  color: #64748b;
+}
+
+/* ===============================
+   SMOOTH SCROLL
+================================ */
+.chat::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 10px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="header">
+    <h1>🎙️ AI Voice Interviewer</h1>
+    <p>Automated screening interview powered by AI</p>
+  </div>
+
+  <!-- SELECTION -->
+  <div class="card" id="setupCard">
+    <label>Domain</label>
+    <select id="domain"></select>
+
+    <label>Role</label>
+    <select id="role"></select>
+
+    <button onclick="startInterview()">Start Interview</button>
+  </div>
+
+  <!-- INTERVIEW -->
+  <div class="card" id="interviewCard" style="display:none;">
+    <div class="chat" id="chat"></div>
+
+    <div class="footer">
+    <input id="answer" placeholder="Speak naturally..." disabled />
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API = "http://127.0.0.1:8000";
+
+let sessionId = null;
+
+// --------------------- UI HELPERS ---------------------
+
+function addBot(text) {
+  chat.innerHTML += `<div class="bot">🤖 ${text}</div>`;
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function addUser(text) {
+  chat.innerHTML += `<div class="user">👤 ${text}</div>`;
+  chat.scrollTop = chat.scrollHeight;
+}
+
+let botAudio = null;
+
+function playAudio(b64) {
+  if (!b64) {
+    startMic();   // fallback
+    return;
+  }
+
+  if (botAudio) {
+    botAudio.pause();
+    botAudio = null;
+  }
+
+  botAudio = new Audio("data:audio/wav;base64," + b64);
+
+  // 🎯 WHEN BOT FINISHES SPEAKING → START MIC
+  botAudio.onended = () => {
+    startMic();
+  };
+
+  botAudio.play();
+}
+
+// --------------------- LOAD DOMAINS ---------------------
+
+fetch(`${API}/api/domains/`)
+  .then(r => r.json())
+  .then(d => {
+    d.domains.forEach(x => {
+      domain.innerHTML += `<option value="${x.id}">${x.label}</option>`;
+    });
+    loadRoles();
+  });
+
+domain.onchange = loadRoles;
+
+function loadRoles() {
+  fetch(`${API}/api/roles/${domain.value}/`)
+    .then(r => r.json())
+    .then(d => {
+      role.innerHTML = "";
+      d.roles.forEach(x => {
+        role.innerHTML += `<option value="${x.id}">${x.label}</option>`;
+      });
+    });
+}
+
+// --------------------- START INTERVIEW ---------------------
+
+function startInterview() {
+  fetch(`${API}/api/start/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      company: "KnowCraft",
+      role_label: role.options[role.selectedIndex].text,
+      designation: role.value
+    })
+  })
+  .then(r => r.json())
+  .then(d => {
+    sessionId = d.session_id;
+    setupCard.style.display = "none";
+    interviewCard.style.display = "block";
+
+    addBot(d.question.text);
+    playAudio(d.audio);
+  });
+}
+
+// --------------------- SEND ANSWER ---------------------
+
+function sendAnswer() {
+  const text = answer.value.trim();
+  if (!text) return;
+
+  addUser(text);
+  answer.value = "";
+
+  fetch(`${API}/api/next/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      session_id: sessionId,
+      answer: text
+    })
+  })
+  .then(r => r.json())
+  .then(d => {
+    addBot(d.question.text);
+    playAudio(d.audio);
+
+    if (d.finished) {
+      answer.disabled = true;
+    }
+  });
+}
+/* ===============================
+   🎤 BROWSER SPEECH TO TEXT
+================================ */
+
+let recognition;
+let listening = false;
+
+/* ===============================
+   🎤 AUTO VOICE LISTENING (STT)
+================================ */
+
+
+let silenceTimer = null;
+
+function startMic() {
+
+  if (listening) return;
+
+  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+    alert("Speech recognition not supported. Use Chrome.");
+    return;
+  }
+
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  recognition = new SpeechRecognition();
+  recognition.lang = "en-US";
+  recognition.interimResults = false;
+  recognition.continuous = false;
+
+  recognition.onstart = () => {
+    listening = true;
+    answer.placeholder = "🎤 Listening...";
+    console.log("🎤 Mic ON");
+  };
+
+  recognition.onresult = (event) => {
+    const text = event.results[0][0].transcript;
+    answer.value = text;
+
+    stopMic();
+    sendAnswer();   // 🚀 auto-send
+  };
+
+  recognition.onerror = () => {
+    stopMic();
+  };
+
+  recognition.onend = () => {
+    stopMic();
+  };
+
+  recognition.start();
+
+  // 🕒 SAFETY: auto stop if silence (5s)
+  silenceTimer = setTimeout(() => {
+    stopMic();
+  }, 5000);
+}
+
+function stopMic() {
+  if (!listening) return;
+
+  listening = false;
+  answer.placeholder = "Listening stopped";
+
+  if (recognition) {
+    recognition.stop();
+    recognition = null;
+  }
+
+  if (silenceTimer) {
+    clearTimeout(silenceTimer);
+    silenceTimer = null;
+  }
+
+  console.log("🎤 Mic OFF");
+}
+
+
+
+</script>
+
+</body>
+</html>
