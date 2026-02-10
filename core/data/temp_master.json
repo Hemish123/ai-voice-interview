@@ -3,49 +3,21 @@
   "source": "auto_ingest",
   "domains": [
     {
-      "id": "hr",
-      "label": "HR",
+      "id": "it",
+      "label": "IT",
       "active": true,
       "roles": [
         {
-          "id": "job_description_this_position_reports_to_the_human_resources_hr_director_and",
-          "label": "Job Description: This position reports to the Human Resources (HR) director and",
-          "dataset": "core/data/domains/temp_ingested\\job_description_this_position_reports_to_the_human_resources_hr_director_and.json",
+          "id": "python_react_developer_techseria_pvt_ltd_may_2024_present",
+          "label": "Python & React Developer | Techseria Pvt Ltd ( May 2024 - Present )",
+          "dataset": "core/data/domains/temp_ingested/python_react_developer_techseria_pvt_ltd_may_2024_present.json",
           "experience": null,
           "active": true
         },
         {
-          "id": "interfaces_with_company_managers_and_hr_staff_company_xyz_is",
-          "label": "interfaces with company managers and HR staff. Company XYZ is",
-          "dataset": "core/data/domains/temp_ingested\\interfaces_with_company_managers_and_hr_staff_company_xyz_is.json",
-          "experience": "manager",
-          "active": true
-        },
-        {
-          "id": "provide_direct_support_to_employees_during_implementation_of_hr",
-          "label": "- Provide direct support to employees during implementation of HR",
-          "dataset": "core/data/domains/temp_ingested\\provide_direct_support_to_employees_during_implementation_of_hr.json",
-          "experience": null,
-          "active": true
-        },
-        {
-          "id": "how_to_engage_professionally_in_hr_meetings_and_seminars_with",
-          "label": "- How to engage professionally in HR meetings and seminars with",
-          "dataset": "core/data/domains/temp_ingested\\how_to_engage_professionally_in_hr_meetings_and_seminars_with.json",
-          "experience": null,
-          "active": true
-        },
-        {
-          "id": "other_hr_professionals_in_the_region",
-          "label": "other HR professionals in the region",
-          "dataset": "core/data/domains/temp_ingested\\other_hr_professionals_in_the_region.json",
-          "experience": null,
-          "active": true
-        },
-        {
-          "id": "application_of_hr_law_and_compliance_with_governmental_regulations",
-          "label": "- Application of HR law and compliance with governmental regulations",
-          "dataset": "core/data/domains/temp_ingested\\application_of_hr_law_and_compliance_with_governmental_regulations.json",
+          "id": "python_developer_brainybeam_technologies_pvt_ltd_aug_2023_april_2024",
+          "label": "Python Developer | BrainyBeam Technologies Pvt. Ltd ( Aug 2023 - April 2024 )",
+          "dataset": "core/data/domains/temp_ingested/python_developer_brainybeam_technologies_pvt_ltd_aug_2023_april_2024.json",
           "experience": null,
           "active": true
         }
