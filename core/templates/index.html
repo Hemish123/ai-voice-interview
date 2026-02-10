@@ -12,15 +12,20 @@
 ================================ */
 body {
   margin: 0;
+  min-height: 100vh;
   font-family: "Inter", system-ui, sans-serif;
   background: radial-gradient(circle at top, #0f172a, #020617 70%);
   color: #e5e7eb;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .container {
+  width: 100%;
   max-width: 920px;
-  margin: auto;
-  padding: 40px 20px;
+  padding: 20px;
 }
 
 /* ===============================
@@ -40,9 +45,17 @@ body {
   color: #94a3b8;
 }
 
+
 /* ===============================
    CARD
 ================================ */
+
+#setupCard {
+  margin: 0 auto;
+  width: 100%;
+}
+
+
 .card {
   background: linear-gradient(180deg, #020617, #020617);
   border-radius: 14px;
@@ -185,7 +198,7 @@ button:hover {
 
   <div class="card" id="setupCard">
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+    <div class="setup-grid">
 
       <!-- PREDEFINED -->
       <div>
@@ -203,7 +216,7 @@ button:hover {
       </div>
 
       <!-- AUTO JD -->
-      <div>
+      {% comment %} <div>
 
         <h3>📄 JD / Resume</h3>
 
@@ -212,7 +225,7 @@ button:hover {
 
         <button onclick="showLoading(); startAutoJD()">Upload & Start Interview</button>
 
-      </div>
+      </div> {% endcomment %}
 
     </div>
 
@@ -226,7 +239,7 @@ button:hover {
 
     <div class="footer">
       <input id="answer"
-             placeholder="🎤 Speak naturally..."
+             placeholder="🎤"
              disabled />
     </div>
 

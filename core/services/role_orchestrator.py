@@ -83,27 +83,30 @@ def get_next_question(session):
     # Q1 WELCOME
     # -------------------------------------------------
 
+    # if session.phase == "intro":
+
+    #         session.phase = "knowcraft_intro"
+
+    #         return _q(
+    #             "welcome",
+    #             f"Hello and welcome to {session.company}. "
+    #             f"This interview is for the {session.role_label} role."
+    #         )
+
+    # ---------------- INTRO ----------------
+
     if session.phase == "intro":
-
-            session.phase = "knowcraft_intro"
-
-            return _q(
-                "welcome",
-                f"Hello and welcome to {session.company}. "
-                f"This interview is for the {session.role_label} role."
-            )
-    # -------------------------------------------------
-    # Q1.1 KNOWCRAFT QUESTION
-    # -------------------------------------------------
-
-    if session.phase == "knowcraft_intro":
 
         session.phase = "await_self_intro"
 
-        return _q(
-            "knowcraft",
+        text = (
+            f"Hello and welcome to {session.company}. "
+            f"This interview is for the {session.role_label} role. "
             "Can you tell me what you know about KnowCraft?"
         )
+
+        return _q("welcome", text)
+    
 
     # -------------------------------------------------
     # Q1.2 SELF INTRO
