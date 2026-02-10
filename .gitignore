@@ -1,4 +1,48 @@
+# Environment variables
 .env
-__pycache__/
+.env.*
+
+# Python virtual environments
 venv/
+antenv/
+.env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Python build artifacts
+build/
+dist/
+*.egg-info/
+
+# Django
+db.sqlite3
 *.sqlite3
+media/
+staticfiles/
+
+# Logs
+*.log
+
+# VS Code
+.vscode/
+.history/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# pyenv
+.python-version
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# Test / coverage
+.coverage
+htmlcov/
+
+# Azure / deployment artifacts
+*.zip

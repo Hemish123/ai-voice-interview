@@ -1,15 +1,23 @@
-# core/urls.py
-
 from django.urls import path
-from . import views
+from core import views
+from django.http import HttpResponse
+
+def favicon(request):
+    return HttpResponse(status=204)
 
 urlpatterns = [
+
     path("", views.index),
-    path("api/domains/", views.list_domains),
-    path("api/roles/<str:domain_id>/", views.list_roles),
 
-    path("api/start/", views.start_interview),
-    path("api/next/", views.next_question),
+    # predefined dropdown
+    path("api/start/", views.api_start),
+    path("api/domains/", views.api_domains),
+    path("api/roles/<str:domain_id>/", views.api_roles),
 
-    path("api/tts/", views.tts_only),
+    # JD auto
+    path("api/start-auto/", views.api_start_auto),
+    path("api/next/", views.api_next),
+    path("favicon.ico", favicon),
+
+
 ]

@@ -1,100 +1,94 @@
-from django.shortcuts import render
-
-# Create your views here.
 # core/views.py
 
+import os
+import uuid
 import json
+
+from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.conf import settings
 
-from core.services.session_store import create_session
-from core.services.role_orchestrator import get_next_question
+from core.services.auto_ingest import ingest_document
+from core.services.terminal_interviewer import get_next_question
 from core.services.tts import synthesize_to_base64
-from core.services import evaluator
 
-# from core.data import master_roles
-import os
 
 # =====================================================
-# IN-MEMORY SESSION STORE
+# CONFIG
 # =====================================================
+
+UPLOAD_DIR = os.path.join(settings.BASE_DIR, "uploads")
 
 SESSIONS = {}   # session_id -> InterviewSession
 
 
 # =====================================================
-# MASTER DATA HELPERS
+# PAGE
 # =====================================================
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-MASTER_FILE = os.path.join(
-    CURRENT_DIR,
-    "data",
-    "master_roles.json"
-)
-
-def load_master():
-    with open(MASTER_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+def index(request):
+    return render(request, "index.html")
 
 
 # =====================================================
-# DOMAIN / ROLE APIs
-# =====================================================
-
-def list_domains(request):
-    master = load_master()
-    domains = [
-        {
-            "id": d["id"],
-            "label": d["label"],
-            "description": d["description"],
-        }
-        for d in master["domains"] if d.get("active")
-    ]
-    return JsonResponse({"domains": domains})
-
-
-def list_roles(request, domain_id):
-    master = load_master()
-
-    for d in master["domains"]:
-        if d["id"] == domain_id:
-            roles = [
-                {
-                    "id": r["id"],
-                    "label": r["label"],
-                    "experience": r["experience"],
-                    "education": r["education"],
-                }
-                for r in d["roles"] if r.get("active")
-            ]
-            return JsonResponse({"roles": roles})
-
-    return JsonResponse({"error": "Domain not found"}, status=404)
-
-
-# =====================================================
-# INTERVIEW START
+# START AUTO JD MODE (ONLY ENTRY)
 # =====================================================
 
 @csrf_exempt
-def start_interview(request):
-    """
-    POST:
-    {
-        "company": "KnowCraft",
-        "role_label": "Associate HR",
-        "designation": "associate_hr"
-    }
-    """
+def api_start_auto(request):
+
+    file = request.FILES.get("jd")
+
+    if not file:
+        return JsonResponse({"error": "No JD uploaded"}, status=400)
+
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+    fname = f"{uuid.uuid4()}_{file.name}"
+    path = os.path.join(UPLOAD_DIR, fname)
+
+    with open(path, "wb+") as f:
+        for c in file.chunks():
+            f.write(c)
+
+    # AUTO INGEST → creates temp master + session
+    session = ingest_document(path)
+
+    SESSIONS[session.session_id] = session
+
+    q = get_next_question(session)
+
+    return JsonResponse({
+        "session_id": session.session_id,
+        "question": q,
+        "audio": synthesize_to_base64(q["text"]),
+        "finished": False,
+    })
+
+
+# =====================================================
+# START PREDEFINED ROLE MODE
+# =====================================================
+
+@csrf_exempt
+def api_start(request):
 
     data = json.loads(request.body)
 
+    role_id = data.get("designation")
+    role_label = data.get("role_label")
+
+    if not role_id:
+        return JsonResponse({"error": "No role selected"}, status=400)
+
+    # create fresh session
+    from core.services.session_store import create_session
+
     session = create_session(
-        company=data["company"],
-        role_label=data["role_label"],
-        designation=data["designation"],
+        company=data.get("company", "KnowCraft"),
+        role_label=role_label,
+        designation=role_id,
     )
 
     SESSIONS[session.session_id] = session
@@ -114,17 +108,11 @@ def start_interview(request):
 # =====================================================
 
 @csrf_exempt
-def next_question(request):
-    """
-    POST:
-    {
-        "session_id": "...",
-        "answer": "text answer from user"
-    }
-    """
+def api_next(request):
 
     data = json.loads(request.body)
-    session_id = data["session_id"]
+
+    session_id = data.get("session_id")
     answer = data.get("answer", "")
 
     session = SESSIONS.get(session_id)
@@ -133,36 +121,69 @@ def next_question(request):
         return JsonResponse({"error": "Invalid session"}, status=400)
 
     session.last_answer = answer
-    session.answers[getattr(session, "last_question", {}).get("id", "unknown")] = answer
 
     q = get_next_question(session)
 
     return JsonResponse({
         "question": q,
         "audio": synthesize_to_base64(q["text"]),
-        "finished": session.finished,
+        "finished": getattr(session, "finished", False),
     })
 
 
 # =====================================================
-# TTS ONLY (OPTIONAL)
+# PREDEFINED ROLE SUPPORT (MASTER FILE READER)
 # =====================================================
 
-@csrf_exempt
-def tts_only(request):
-    """
-    POST:
-    {
-        "text": "Hello"
-    }
-    """
-
-    data = json.loads(request.body)
-    audio = synthesize_to_base64(data["text"])
-
-    return JsonResponse({"audio": audio})
+MASTER_FILE = os.path.join(
+    settings.BASE_DIR,
+    "core",
+    "data",
+    "master_roles.json"
+)
 
 
+def _load_master_file():
 
-def index(request):
-    return render(request, "index.html")
+    if not os.path.exists(MASTER_FILE):
+        return {"domains": []}
+
+    with open(MASTER_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def api_domains(request):
+
+    master = _load_master_file()
+
+    return JsonResponse({
+        "domains": [
+            {
+                "id": d["id"],
+                "label": d["label"],
+            }
+            for d in master.get("domains", [])
+            if d.get("active")
+        ]
+    })
+
+
+def api_roles(request, domain_id):
+
+    master = _load_master_file()
+
+    for d in master.get("domains", []):
+        if d["id"] == domain_id:
+
+            return JsonResponse({
+                "roles": [
+                    {
+                        "id": r["id"],
+                        "label": r["label"],
+                    }
+                    for r in d.get("roles", [])
+                    if r.get("active")
+                ]
+            })
+
+    return JsonResponse({"roles": []})

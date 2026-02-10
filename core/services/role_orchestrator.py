@@ -63,13 +63,13 @@ def get_next_question(session):
     ]
 
     if _contains(session.last_answer, HARD_END):
-        session.phase = "finished"
-        session.finished = True
-        return _q(
-            "end",
-            f"Thank you {session.candidate_name or ''}. "
-            "The interview has now ended. Have a great day."
-        )
+            session.phase = "finished"
+            session.finished = True
+            return _q(
+                "end",
+                f"Thank you {session.candidate_name or ''}. "
+                "The interview has now ended. Have a great day."
+            )
 
     # ---------------- GLOBAL REPEAT ----------------
 
@@ -85,14 +85,13 @@ def get_next_question(session):
 
     if session.phase == "intro":
 
-        session.phase = "knowcraft_intro"
+            session.phase = "knowcraft_intro"
 
-        return _q(
-            "welcome",
-            f"Hello and welcome to {session.company}. "
-            f"This interview is for the {session.role_label} role."
-        )
-
+            return _q(
+                "welcome",
+                f"Hello and welcome to {session.company}. "
+                f"This interview is for the {session.role_label} role."
+            )
     # -------------------------------------------------
     # Q1.1 KNOWCRAFT QUESTION
     # -------------------------------------------------
