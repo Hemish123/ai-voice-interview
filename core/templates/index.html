@@ -2,14 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" href="/static/favicon.ico">
+
 <title>AI Voice Interviewer</title>
+
 <style>
 /* ===============================
    GLOBAL
 ================================ */
 body {
   margin: 0;
-  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: "Inter", system-ui, sans-serif;
   background: radial-gradient(circle at top, #0f172a, #020617 70%);
   color: #e5e7eb;
 }
@@ -31,13 +34,10 @@ body {
 .header h1 {
   font-size: 34px;
   font-weight: 700;
-  letter-spacing: -0.5px;
 }
 
 .header p {
   color: #94a3b8;
-  margin-top: 8px;
-  font-size: 15px;
 }
 
 /* ===============================
@@ -60,7 +60,7 @@ label {
   color: #cbd5f5;
 }
 
-select, input {
+select, input[type=file] {
   width: 100%;
   margin-top: 6px;
   margin-bottom: 16px;
@@ -70,11 +70,6 @@ select, input {
   color: #e5e7eb;
   border: 1px solid #1e293b;
   font-size: 15px;
-}
-
-select:focus, input:focus {
-  outline: none;
-  border-color: #3b82f6;
 }
 
 button {
@@ -87,101 +82,54 @@ button {
   background: linear-gradient(135deg, #2563eb, #1d4ed8);
   color: white;
   cursor: pointer;
-  transition: all 0.2s ease;
 }
 
 button:hover {
   transform: translateY(-1px);
-  box-shadow: 0 8px 20px rgba(37,99,235,0.4);
 }
 
 /* ===============================
-   CHAT AREA
+   CHAT
 ================================ */
 .chat {
   margin-top: 10px;
   max-height: 420px;
   overflow-y: auto;
-  padding-right: 8px;
 }
 
-/* ===============================
-   BOT MESSAGE
-================================ */
+/* BOT */
 .bot {
   background: #0e5461;
   border-left: 4px solid #22c55e;
-  padding: 14px 16px;
+  padding: 14px;
   border-radius: 10px;
   margin-bottom: 14px;
   max-width: 75%;
-  box-shadow: 0 10px 25px rgba(49, 32, 71, 0.4);
 }
 
-.bot::before {
-  content: "🤖 AI Interviewer";
-  display: block;
-  font-size: 12px;
-  color: #22c55e;
-  margin-bottom: 6px;
-}
-
-/* ===============================
-   USER MESSAGE
-================================ */
+/* USER */
 .user {
   background: #2a3359;
   border-right: 4px solid #3b82f6;
-  padding: 14px 16px;
+  padding: 14px;
   border-radius: 10px;
   margin-bottom: 14px;
   margin-left: auto;
   max-width: 75%;
   text-align: right;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.4);
 }
 
-.user::before {
-  content: "👤 Candidate";
-  display: block;
-  font-size: 12px;
-  color: #3b82f6;
-  margin-bottom: 6px;
-}
-
-/* ===============================
-   FOOTER INPUT
-================================ */
-.footer {
-  margin-top: 14px;
-}
-
+/* FOOTER */
 .footer input {
+  width: 100%;
+  padding: 12px;
   background: #020617;
   border: 1px solid #1e293b;
-  color: #94a3b8;
+  border-radius: 8px;
+  color: white;
   text-align: center;
-  font-style: italic;
 }
 
-/* ===============================
-   STATUS FEEDBACK
-================================ */
-.footer input::placeholder {
-  color: #64748b;
-}
-
-/* ===============================
-   SMOOTH SCROLL
-================================ */
-.chat::-webkit-scrollbar {
-  width: 6px;
-}
-
-.chat::-webkit-scrollbar-thumb {
-  background: #1e293b;
-  border-radius: 10px;
-}
 </style>
 </head>
 
@@ -191,99 +139,236 @@ button:hover {
 
   <div class="header">
     <h1>🎙️ AI Voice Interviewer</h1>
-    <p>Automated screening interview powered by AI</p>
+    <p>Automated screening powered by AI</p>
   </div>
 
-  <!-- SELECTION -->
+  <!-- ================= SETUP ================= -->
+
   <div class="card" id="setupCard">
-    <label>Domain</label>
-    <select id="domain"></select>
 
-    <label>Role</label>
-    <select id="role"></select>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
 
-    <button onclick="startInterview()">Start Interview</button>
+      <!-- PREDEFINED -->
+      <div>
+
+        <h3>🎯 Predefined Role</h3>
+
+        <label>Domain</label>
+        <select id="domain"></select>
+
+        <label>Role</label>
+        <select id="role"></select>
+
+        <button onclick="startPredefined()">Start Interview</button>
+
+      </div>
+
+      <!-- AUTO JD -->
+      <div>
+
+        <h3>📄 JD / Resume</h3>
+
+        <label>Upload Document</label>
+        <input type="file" id="jdFile" accept=".pdf,.doc,.docx">
+
+        <button onclick="startAutoJD()">Upload & Start Interview</button>
+
+      </div>
+
+    </div>
+
   </div>
 
-  <!-- INTERVIEW -->
+  <!-- ================= INTERVIEW ================= -->
+
   <div class="card" id="interviewCard" style="display:none;">
+
     <div class="chat" id="chat"></div>
 
     <div class="footer">
-    <input id="answer" placeholder="Speak naturally..." disabled />
+      <input id="answer"
+             placeholder="🎤 Speak naturally..."
+             disabled />
     </div>
+
   </div>
 
 </div>
 
 <script>
-const API = "https://jmsaiinterview-d2bghsgncmdzgyf4.centralindia-01.azurewebsites.net";
+
+/* ================= CONFIG ================= */
+
+const START_URL = "/api/start/";
+const START_AUTO_URL = "/api/start-auto/";
+const NEXT_URL = "/api/next/";
+const DOMAINS_URL = "/api/domains/";
+const ROLES_URL = "/api/roles/";
 
 let sessionId = null;
+let recognition = null;
+let interviewFinished = false;
 
-// --------------------- UI HELPERS ---------------------
+/* ================= iOS / SAFARI DETECTION ================= */
 
-function addBot(text) {
-  chat.innerHTML += `<div class="bot">🤖 ${text}</div>`;
+const IS_IOS = /iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent);
+
+/* ================= AUDIO ================= */
+
+let iosAudio = new Audio();
+iosAudio.playsInline = true;
+iosAudio.preload = "auto";
+
+let audioContext = null;
+
+/* ================= UI ================= */
+
+function addBot(t) {
+  chat.innerHTML += `<div class="bot">${t}</div>`;
   chat.scrollTop = chat.scrollHeight;
 }
 
-function addUser(text) {
-  chat.innerHTML += `<div class="user">👤 ${text}</div>`;
+function addUser(t) {
+  chat.innerHTML += `<div class="user">${t}</div>`;
   chat.scrollTop = chat.scrollHeight;
 }
 
-let botAudio = null;
+/* ================= DOMAIN + ROLE LOAD ================= */
 
-function playAudio(b64) {
-  if (!b64) {
-    startMic();   // fallback
-    return;
-  }
-
-  if (botAudio) {
-    botAudio.pause();
-    botAudio = null;
-  }
-
-  botAudio = new Audio("data:audio/wav;base64," + b64);
-
-  // 🎯 WHEN BOT FINISHES SPEAKING → START MIC
-  botAudio.onended = () => {
-    startMic();
-  };
-
-  botAudio.play();
-}
-
-// --------------------- LOAD DOMAINS ---------------------
-
-fetch(`${API}/api/domains/`)
+fetch(DOMAINS_URL)
   .then(r => r.json())
   .then(d => {
+
+    domain.innerHTML = "";
+
     d.domains.forEach(x => {
-      domain.innerHTML += `<option value="${x.id}">${x.label}</option>`;
+      domain.innerHTML +=
+        `<option value="${x.id}">${x.label}</option>`;
     });
-    loadRoles();
-  });
+
+    if (d.domains.length) loadRoles();
+  })
+  .catch(err => console.error("❌ Domain load failed", err));
 
 domain.onchange = loadRoles;
 
 function loadRoles() {
-  fetch(`${API}/api/roles/${domain.value}/`)
+
+  if (!domain.value) return;
+
+  fetch(`${ROLES_URL}${domain.value}/`)
     .then(r => r.json())
     .then(d => {
+
       role.innerHTML = "";
+
       d.roles.forEach(x => {
-        role.innerHTML += `<option value="${x.id}">${x.label}</option>`;
+        role.innerHTML +=
+          `<option value="${x.id}">${x.label}</option>`;
       });
-    });
+    })
+    .catch(err => console.error("❌ Role load failed", err));
 }
 
-// --------------------- START INTERVIEW ---------------------
+/* ================= AUDIO UNLOCK ================= */
 
-function startInterview() {
-  fetch(`${API}/api/start/`, {
+async function unlockIOS() {
+
+  if (!audioContext)
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+  if (audioContext.state === "suspended")
+    await audioContext.resume();
+
+  // silent buffer to unlock safari
+  const buf = audioContext.createBuffer(1, 1, 22050);
+  const src = audioContext.createBufferSource();
+  src.buffer = buf;
+  src.connect(audioContext.destination);
+  src.start();
+}
+
+/* ================= MIC ================= */
+
+function initMic() {
+
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!SR) {
+    alert("Speech recognition not supported");
+    return;
+  }
+
+  recognition = new SR();
+  recognition.lang = "en-IN";
+  recognition.continuous = false;
+  recognition.interimResults = false;
+
+  recognition.onstart = () => {
+    answer.placeholder = "🎤 Listening...";
+  };
+
+  recognition.onresult = e => {
+    const text = e.results[0][0].transcript;
+    recognition.stop();
+    addUser(text);
+    sendAnswer(text);
+  };
+
+  recognition.onerror = () => stopMic();
+  recognition.onend = () => {};
+}
+
+function startMic() {
+
+  if (interviewFinished) return;
+
+  if (!recognition) initMic();
+
+  try {
+    recognition.start();
+  } catch (e) {
+    console.warn("Mic start blocked");
+  }
+}
+
+function stopMic() {
+
+  if (recognition) {
+    try { recognition.stop(); } catch {}
+  }
+}
+
+/* ================= AUDIO PLAY ================= */
+
+function playAudio(b64, isFinal = false) {
+
+  if (!b64) {
+    if (!isFinal) startMic();
+    return;
+  }
+
+  iosAudio.src = "data:audio/wav;base64," + b64;
+  iosAudio.load();
+
+  iosAudio.onended = () => {
+    if (!isFinal && !interviewFinished) {
+      startMic();
+    }
+  };
+
+  iosAudio.play()
+    .catch(() => console.warn("Safari autoplay blocked"));
+}
+
+/* ================= PREDEFINED START ================= */
+
+async function startPredefined() {
+
+  await unlockIOS();
+  initMic();
+
+  const r = await fetch(START_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -291,128 +376,100 @@ function startInterview() {
       role_label: role.options[role.selectedIndex].text,
       designation: role.value
     })
-  })
-  .then(r => r.json())
-  .then(d => {
-    sessionId = d.session_id;
-    setupCard.style.display = "none";
-    interviewCard.style.display = "block";
-
-    addBot(d.question.text);
-    playAudio(d.audio);
   });
+
+  const d = await r.json();
+
+  sessionId = d.session_id;
+
+  setupCard.style.display = "none";
+  interviewCard.style.display = "block";
+
+  addBot(d.question.text);
+  playAudio(d.audio);
 }
 
-// --------------------- SEND ANSWER ---------------------
+/* ================= AUTO JD ================= */
 
-function sendAnswer() {
-  const text = answer.value.trim();
-  if (!text) return;
+async function startAutoJD() {
 
-  addUser(text);
-  answer.value = "";
+  const file = document.getElementById("jdFile").files[0];
+  if (!file) { alert("Upload JD first"); return; }
 
-  fetch(`${API}/api/next/`, {
+  await unlockIOS();
+  initMic();
+
+  const fd = new FormData();
+  fd.append("jd", file);
+
+  const r = await fetch(START_AUTO_URL, {
+    method: "POST",
+    body: fd
+  });
+
+  const d = await r.json();
+
+  sessionId = d.session_id;
+
+  setupCard.style.display = "none";
+  interviewCard.style.display = "block";
+
+  addBot(d.question.text);
+  playAudio(d.audio);
+}
+
+/* ================= SEND ANSWER ================= */
+
+async function sendAnswer(text) {
+
+  if (interviewFinished) return;
+
+  const r = await fetch(NEXT_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       session_id: sessionId,
       answer: text
     })
-  })
-  .then(r => r.json())
-  .then(d => {
-    addBot(d.question.text);
-    playAudio(d.audio);
-
-    if (d.finished) {
-      answer.disabled = true;
-    }
   });
-}
-/* ===============================
-   🎤 BROWSER SPEECH TO TEXT
-================================ */
 
-let recognition;
-let listening = false;
+  const d = await r.json();
 
-/* ===============================
-   🎤 AUTO VOICE LISTENING (STT)
-================================ */
+  addBot(d.question.text);
 
+  if (d.finished) {
 
-let silenceTimer = null;
+    interviewFinished = true;
 
-function startMic() {
+    stopMic();
+    answer.disabled = true;
+    answer.placeholder = "Interview finished";
 
-  if (listening) return;
-
-  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-    alert("Speech recognition not supported. Use Chrome.");
+    playAudio(d.audio, true);
     return;
   }
 
-  const SpeechRecognition =
-    window.SpeechRecognition || window.webkitSpeechRecognition;
-
-  recognition = new SpeechRecognition();
-  recognition.lang = "en-US";
-  recognition.interimResults = false;
-  recognition.continuous = false;
-
-  recognition.onstart = () => {
-    listening = true;
-    answer.placeholder = "🎤 Listening...";
-    console.log("🎤 Mic ON");
-  };
-
-  recognition.onresult = (event) => {
-    const text = event.results[0][0].transcript;
-    answer.value = text;
-
-    stopMic();
-    sendAnswer();   // 🚀 auto-send
-  };
-
-  recognition.onerror = () => {
-    stopMic();
-  };
-
-  recognition.onend = () => {
-    stopMic();
-  };
-
-  recognition.start();
-
-  // 🕒 SAFETY: auto stop if silence (5s)
-  silenceTimer = setTimeout(() => {
-    stopMic();
-  }, 5000);
+  playAudio(d.audio);
 }
 
-function stopMic() {
-  if (!listening) return;
+/* ================= FORCE END ================= */
 
-  listening = false;
-  answer.placeholder = "Listening stopped";
+function endInterviewUI() {
 
-  if (recognition) {
-    recognition.stop();
-    recognition = null;
-  }
+  interviewFinished = true;
 
-  if (silenceTimer) {
-    clearTimeout(silenceTimer);
-    silenceTimer = null;
-  }
+  stopMic();
 
-  console.log("🎤 Mic OFF");
+  answer.disabled = true;
+  answer.placeholder = "Interview finished";
 }
-
-
 
 </script>
 
+
+
 </body>
 </html>
+
+
+
