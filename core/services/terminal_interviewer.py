@@ -282,8 +282,7 @@ if BASE_DIR not in sys.path:
 
 
 from urllib.parse import urlparse, unquote
-import tkinter as tk
-from tkinter import filedialog
+
 
 
 from core.services.session_store import create_session
@@ -405,6 +404,8 @@ def main():
     # =====================================================
 
     if args.auto:
+        import tkinter as tk
+        from tkinter import filedialog
 
         print("\n📂 AUTO JD MODE ENABLED\n")
 

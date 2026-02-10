@@ -10,7 +10,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 
 from core.services.auto_ingest import ingest_document
-from core.services.terminal_interviewer import get_next_question
+from core.services.interview_engine import get_next_question
+
 from core.services.tts import synthesize_to_base64
 
 
