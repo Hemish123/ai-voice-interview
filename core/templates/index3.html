@@ -182,9 +182,6 @@ button:hover {
   color: #cbd5f5;
   letter-spacing: 0.4px;
 }
-
-
-
 </style>
 </head>
 
@@ -209,7 +206,7 @@ button:hover {
         <h3>🎯 Predefined Role</h3>
 
         <label>Domain</label>
-        <select id="domain"></select>
+        <select id="domain"></select>   
 
         <label>Role</label>
         <select id="role"></select>
@@ -250,11 +247,6 @@ button:hover {
 
 </div>
 
-
-
-
-
-
 <!-- ================= LOADING ================= -->
 
 <div class="loading-overlay" id="loadingOverlay">
@@ -271,8 +263,6 @@ button:hover {
 
 <script>
 
-
-
 /* ================= CONFIG ================= */
 
 const START_URL = "/api/start/";
@@ -287,8 +277,8 @@ let interviewFinished = false;
 
 /* ================= iOS / SAFARI DETECTION ================= */
 
-const IS_IOS = /iPhone|Macbook|iPad|iPod|Macintosh/i.test(navigator.userAgent);
-const IS_ANDROID = /Android/i.test(navigator.userAgent);
+const IS_IOS = /iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent);
+
 /* ================= AUDIO ================= */
 
 let iosAudio = new Audio();
@@ -296,12 +286,6 @@ iosAudio.playsInline = true;
 iosAudio.preload = "auto";
 
 let audioContext = null;
-
-let silenceTimer = null;
-let speechBuffer = "";
-let userSpeaking = false;
-const USER_SILENCE_LIMIT = 2500; //
-
 
 /* ================= UI ================= */
 
@@ -386,34 +370,18 @@ function initMic() {
   recognition.interimResults = false;
 
   recognition.onstart = () => {
-    answer.placeholder = "🎤";
+    answer.placeholder = "🎤 Listening...";
   };
 
   recognition.onresult = e => {
     const text = e.results[0][0].transcript;
-
-    // user started speaking → reset silence timer
-    if (silenceTimer) {
-      clearTimeout(silenceTimer);
-      silenceTimer = null;
-    }
-
+    recognition.stop();
     addUser(text);
-
-    // wait for user to finish (pause allowed)
-    silenceTimer = setTimeout(() => {
-      stopMic();          // 🔴 mic OFF after user done
-      sendAnswer(text);   // send final answer
-    }, USER_SILENCE_LIMIT);
+    sendAnswer(text);
   };
-
-  recognition.onend = () => {
-    
-
-  };
-
 
   recognition.onerror = () => stopMic();
+  recognition.onend = () => {};
 }
 
 function startMic() {
@@ -424,27 +392,21 @@ function startMic() {
 
   try {
     recognition.start();
-  } catch {
-    console.warn("Mic already running");
+  } catch (e) {
+    console.warn("Mic start blocked");
   }
 }
-
 
 function stopMic() {
 
   if (recognition) {
-    recognition._listening = false;
     try { recognition.stop(); } catch {}
   }
 }
 
-
 /* ================= AUDIO PLAY ================= */
 
 function playAudio(b64, isFinal = false) {
-
-  // 🔴 bot bol raha hai → mic OFF
-  stopMic();
 
   if (!b64) {
     if (!isFinal) startMic();
@@ -455,7 +417,6 @@ function playAudio(b64, isFinal = false) {
   iosAudio.load();
 
   iosAudio.onended = () => {
-    // ✅ bot bol chuka → mic ON
     if (!isFinal && !interviewFinished) {
       startMic();
     }
@@ -464,7 +425,6 @@ function playAudio(b64, isFinal = false) {
   iosAudio.play()
     .catch(() => console.warn("Safari autoplay blocked"));
 }
-
 
 /* ================= PREDEFINED START ================= */
 
@@ -551,7 +511,6 @@ async function sendAnswer(text) {
     answer.placeholder = "Interview finished";
 
     playAudio(d.audio, true);
-    document.getElementById("exportCard").style.display = "block";
     return;
   }
 
@@ -568,36 +527,6 @@ function endInterviewUI() {
 
   answer.disabled = true;
   answer.placeholder = "Interview finished";
-}
-
-
-function exportInterview(format) {
-  alert("Export " + format.toUpperCase() + " (backend next step)");
-}
-
-function skipExport() {
-  document.getElementById("exportCard").innerHTML =
-    "<p style='color:#94a3b8'>Export skipped.</p>";
-}
-
-function exportInterview(fmt) {
-
-  fetch("/api/export/", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      session_id: sessionId,
-      format: fmt
-    })
-  })
-  .then(r => r.json())
-  .then(d => {
-    if (d.success) {
-      alert("Exported successfully: " + d.file);
-    } else {
-      alert("Export failed");
-    }
-  });
 }
 
 </script>
