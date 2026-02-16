@@ -4,6 +4,12 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 import uuid
 
+# =====================================================
+# IN-MEMORY SESSION REGISTRY
+# =====================================================
+
+_SESSIONS: Dict[str, "InterviewSession"] = {}
+
 
 # =====================================================
 # SESSION STATE OBJECT
@@ -14,7 +20,6 @@ class InterviewSession:
 
     # -------- identity --------
     session_id: str
-
     company: str
     role_label: str
     designation: str
@@ -45,9 +50,22 @@ class InterviewSession:
 
 def create_session(company: str, role_label: str, designation: str):
 
-    return InterviewSession(
+    session = InterviewSession(
         session_id=str(uuid.uuid4()),
         company=company,
         role_label=role_label,
         designation=designation,
     )
+
+    # ✅ STORE SESSION
+    _SESSIONS[session.session_id] = session
+
+    return session
+
+
+# =====================================================
+# ACCESSOR (CRITICAL)
+# =====================================================
+
+def get_session(session_id: str) -> Optional[InterviewSession]:
+    return _SESSIONS.get(session_id)

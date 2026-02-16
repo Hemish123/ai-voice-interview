@@ -37,7 +37,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
     'core',
+
 ]
 
 MIDDLEWARE = [
@@ -121,3 +123,6 @@ STATIC_URL = 'static/'
 CSRF_TRUSTED_OROGINS = [
     'https://jmsaiinterview-d2bghsgncmdzgyf4.centralindia-01.azurewebsites.net'
 ]
+
+MEDIA_URL="/media/"
+MEDIA_ROOT=BASE_DIR

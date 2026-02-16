@@ -49,7 +49,7 @@ def get_synthesizer():
         )
 
         # 🇮🇳 Indian English neural voice
-        speech_config.speech_synthesis_voice_name = "en-IN-PrabhatNeural"
+        speech_config.speech_synthesis_voice_name = "en-IN-NeerjaNeural"
 
         _synthesizer = speechsdk.SpeechSynthesizer(
             speech_config=speech_config
@@ -86,7 +86,7 @@ def synthesize_to_base64(text: str) -> str:
         region=AZURE_SPEECH_REGION,
     )
 
-    speech_config.speech_synthesis_voice_name = "en-IN-PrabhatNeural"
+    speech_config.speech_synthesis_voice_name = "en-IN-NeerjaNeural"
 
     synthesizer = speechsdk.SpeechSynthesizer(
         speech_config=speech_config,
