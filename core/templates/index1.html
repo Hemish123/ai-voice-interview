@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -14,8 +15,8 @@ body {
   margin: 0;
   min-height: 100vh;
   font-family: "Inter", system-ui, sans-serif;
-  background: radial-gradient(circle at top, #0f172a, #020617 70%);
-  color: #e5e7eb;
+  background: radial-gradient(circle at top, #cfd4dc, #b7c8e4 70%);
+  color: #4d4d84;
 
   display: flex;
   align-items: center;
@@ -42,7 +43,7 @@ body {
 }
 
 .header p {
-  color: #94a3b8;
+  color: #2e3032;
 }
 
 
@@ -112,8 +113,8 @@ button:hover {
 
 /* BOT */
 .bot {
-  background: #0e5461;
-  border-left: 4px solid #22c55e;
+  background: #ffffff;
+  border-left: 6px solid #22c55e;
   padding: 14px;
   border-radius: 10px;
   margin-bottom: 14px;
@@ -122,8 +123,8 @@ button:hover {
 
 /* USER */
 .user {
-  background: #2a3359;
-  border-right: 4px solid #3b82f6;
+  background: #ffffff;
+  border-right: 6px solid #3b82f6;
   padding: 14px;
   border-radius: 10px;
   margin-bottom: 14px;
@@ -135,7 +136,7 @@ button:hover {
 /* FOOTER */
 .footer input {
   width: 100%;
-  padding: 12px;
+  padding: 7px;
   background: #020617;
   border: 1px solid #1e293b;
   border-radius: 8px;
@@ -182,6 +183,170 @@ button:hover {
   color: #cbd5f5;
   letter-spacing: 0.4px;
 }
+
+/* =========================================
+   RESPONSIVE DESIGN – ALL DEVICES
+========================================= */
+
+/* ---------- Tablets & Small Laptops ---------- */
+@media (max-width: 1024px) {
+
+  .container {
+    max-width: 860px;
+    padding: 18px;
+  }
+
+  .header h1 {
+    font-size: 30px;
+  }
+
+  .chat {
+    max-height: 380px;
+  }
+}
+
+/* ---------- Mobile Devices (Android + iPhone) ---------- */
+@media (max-width: 768px) {
+
+  body {
+    align-items: flex-start;
+    padding-top: 10px;
+  }
+
+  .container {
+    max-width: 100%;
+    padding: 14px;
+  }
+
+  .header {
+    margin-bottom: 20px;
+  }
+
+  .header h1 {
+    font-size: 26px;
+  }
+
+  .header p {
+    font-size: 14px;
+  }
+
+  .card {
+    padding: 18px;
+    border-radius: 12px;
+  }
+
+  /* Chat area */
+  .chat {
+    max-height: 65vh;        /* 🔑 adaptive height */
+    padding-right: 4px;
+  }
+
+  /* Bot & User bubbles */
+  .bot,
+  .user {
+    font-size: 16px;         /* 🔑 readable on phone */
+    padding: 14px;
+    max-width: 90%;
+    border-radius: 14px;
+  }
+
+  /* Input */
+  .footer input {
+    font-size: 15px;
+    padding: 10px;
+  }
+
+  select,
+  input[type=file] {
+    font-size: 15px;
+    padding: 12px;
+  }
+
+  button {
+    font-size: 15px;
+    padding: 12px;
+  }
+}
+
+/* ---------- Small Phones (≤ 480px) ---------- */
+@media (max-width: 480px) {
+
+  .header h1 {
+    font-size: 22px;
+  }
+
+  .header p {
+    font-size: 13px;
+  }
+
+  .bot,
+  .user {
+    font-size: 15px;
+    max-width: 95%;
+  }
+
+  .chat {
+    max-height: 60vh;
+  }
+
+  button {
+    padding: 11px;
+    font-size: 14px;
+  }
+}
+
+/* ---------- Fix iOS Scroll & Overflow ---------- */
+.chat {
+  -webkit-overflow-scrolling: touch; /* smooth scroll on iOS */
+  overscroll-behavior: contain;
+}
+
+/* ---------- Prevent zoom on input (iOS) ---------- */
+input,
+select,
+button {
+  font-size: 16px; /* prevents iOS zoom */
+}
+
+/* ===============================
+   END INTERVIEW BUTTON
+================================ */
+
+/* ===============================
+   END INTERVIEW BUTTON (BELOW CARD)
+================================ */
+
+#endInterviewWrapper {
+  display: none;              /* shown via JS */
+  margin-top: 20px;
+  text-align: center;
+}
+
+.end-btn {
+  width: 100%;
+  max-width: 320px;
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+
+  box-shadow: 0 10px 25px rgba(239,68,68,0.35);
+  transition: all 0.2s ease;
+}
+
+.end-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(239,68,68,0.45);
+}
+
+
+
 </style>
 </head>
 
@@ -245,7 +410,18 @@ button:hover {
 
   </div>
 
+
+  <div id="endInterviewWrapper" style="display:none; text-align:center; margin-top:16px;">
+    <button id="endInterviewBtn" class="end-btn">⛔ End Interview</button>
+  </div>
+
 </div>
+
+<!-- ================= END INTERVIEW BUTTON ================= -->
+
+
+
+
 
 <!-- ================= LOADING ================= -->
 
@@ -263,31 +439,70 @@ button:hover {
 
 <script>
 
-/* ================= CONFIG ================= */
+function exportInterview(format) {
+  alert("Export " + format.toUpperCase() + " (backend next step)");
+}
 
-const START_URL = "/api/start/";
-const START_AUTO_URL = "/api/start-auto/";
-const NEXT_URL = "/api/next/";
-const DOMAINS_URL = "/api/domains/";
-const ROLES_URL = "/api/roles/";
+function skipExport() {
+  document.getElementById("exportCard").innerHTML =
+    "<p style='color:#94a3b8'>Export skipped.</p>";
+}
+
+/* =====================================================
+   CONFIG
+===================================================== */
+
+const START_URL = "/api/v1/start/";
+const START_AUTO_URL = "/api/v1/start-auto/";
+const NEXT_URL = "/api/v1/next/";
+const DOMAINS_URL = "/api/v1/domains/";
+const ROLES_URL = "/api/v1/roles/";
+
 
 let sessionId = null;
 let recognition = null;
 let interviewFinished = false;
+let answerFinalized = false;
 
-/* ================= iOS / SAFARI DETECTION ================= */
 
-const IS_IOS = /iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent);
 
-/* ================= AUDIO ================= */
+// ================= PAUSE TRACKING =================
+let silenceTimer = null;
+let speechBuffer = "";  
+let lastSpeechTime = 0;
+
+const COMMA_PAUSE_THRESHOLD = 1500;       // comma pause
+const USER_LONG_SILENCE_LIMIT = 3500;    // ✅ LONG thinking pause
+
+
+
+/* =====================================================
+   DEVICE DETECTION (INFO ONLY)
+===================================================== */
+
+const IS_IOS = /iPhone|Macbook|iPad|iPod|Macintosh/i.test(navigator.userAgent);
+
+/* =====================================================
+   AUDIO (UNCHANGED – iPhone SAFE)
+===================================================== */
 
 let iosAudio = new Audio();
 iosAudio.playsInline = true;
 iosAudio.preload = "auto";
 
+// ✅ MUST EXIST BEFORE unlockIOS()
 let audioContext = null;
 
-/* ================= UI ================= */
+
+/* =====================================================
+   MIC STATE (REFERENCE STYLE)
+===================================================== */
+
+let micActive = false;
+
+/* =====================================================
+   UI
+===================================================== */
 
 function addBot(t) {
   chat.innerHTML += `<div class="bot">${t}</div>`;
@@ -295,51 +510,53 @@ function addBot(t) {
 }
 
 function addUser(t) {
-  chat.innerHTML += `<div class="user">${t}</div>`;
+  let last = chat.querySelector(".user:last-child");
+
+  if (last && !answerFinalized) {
+    // update same line
+    last.innerText = t;
+  } else {
+    // create new line only once
+    chat.innerHTML += `<div class="user">${t}</div>`;
+  }
+
   chat.scrollTop = chat.scrollHeight;
 }
 
-/* ================= DOMAIN + ROLE LOAD ================= */
+
+/* =====================================================
+   DOMAIN + ROLE LOAD (UNCHANGED)
+===================================================== */
 
 fetch(DOMAINS_URL)
   .then(r => r.json())
   .then(d => {
-
     domain.innerHTML = "";
-
     d.domains.forEach(x => {
-      domain.innerHTML +=
-        `<option value="${x.id}">${x.label}</option>`;
+      domain.innerHTML += `<option value="${x.id}">${x.label}</option>`;
     });
-
     if (d.domains.length) loadRoles();
-  })
-  .catch(err => console.error("❌ Domain load failed", err));
+  });
 
 domain.onchange = loadRoles;
 
 function loadRoles() {
-
   if (!domain.value) return;
-
   fetch(`${ROLES_URL}${domain.value}/`)
     .then(r => r.json())
     .then(d => {
-
       role.innerHTML = "";
-
       d.roles.forEach(x => {
-        role.innerHTML +=
-          `<option value="${x.id}">${x.label}</option>`;
+        role.innerHTML += `<option value="${x.id}">${x.label}</option>`;
       });
-    })
-    .catch(err => console.error("❌ Role load failed", err));
+    });
 }
 
-/* ================= AUDIO UNLOCK ================= */
+/* =====================================================
+   AUDIO UNLOCK (UNCHANGED)
+===================================================== */
 
 async function unlockIOS() {
-
   if (!audioContext)
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -353,12 +570,49 @@ async function unlockIOS() {
   src.start();
 }
 
-/* ================= MIC ================= */
+
+// ================= TEXT FORMATTER =================
+function formatSpokenText(text) {
+
+  if (!text) return "";
+
+  text = text.trim();
+
+  // Capitalize first letter
+  text = text.charAt(0).toUpperCase() + text.slice(1);
+
+  // Add full stop if missing
+  if (!/[.!?]$/.test(text)) {
+    text += ".";
+  }
+
+  return text;
+}
+
+
+function formatWithPause(text) {
+  text = text.trim();
+
+  // Capitalize first letter
+  if (text.length) {
+    text = text.charAt(0).toUpperCase() + text.slice(1);
+  }
+
+  // Avoid duplicate punctuation
+  text = text.replace(/\s+/g, " ");
+
+  return text;
+}
+
+
+
+/* =====================================================
+   MIC INITIALIZATION (REFERENCE ENGINE)
+===================================================== */
 
 function initMic() {
 
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-
   if (!SR) {
     alert("Speech recognition not supported");
     return;
@@ -366,47 +620,97 @@ function initMic() {
 
   recognition = new SR();
   recognition.lang = "en-IN";
+
+  // 🔥 EXACT reference behavior
   recognition.continuous = false;
   recognition.interimResults = false;
 
   recognition.onstart = () => {
-    answer.placeholder = "🎤 Listening...";
+    micActive = true;
+    answer.placeholder = "🎤 Speak Now...";
   };
 
   recognition.onresult = e => {
-    const text = e.results[0][0].transcript;
-    recognition.stop();
-    addUser(text);
-    sendAnswer(text);
+
+    if (answerFinalized) return;
+
+    const now = Date.now();
+    let text = e.results[0][0].transcript.trim();
+    if (!text) return;
+
+    // 🔹 COMMA HANDLING
+    if (lastSpeechTime && (now - lastSpeechTime) > COMMA_PAUSE_THRESHOLD) {
+      if (!speechBuffer.endsWith(",")) {
+        speechBuffer += ", ";
+      }
+    }
+
+    speechBuffer += text;
+    lastSpeechTime = now;
+
+    addUser(formatWithPause(speechBuffer));
+
+    // 🔹 RESET LONG SILENCE TIMER (THIS IS THE KEY FIX)
+    if (silenceTimer) clearTimeout(silenceTimer);
+
+    silenceTimer = setTimeout(() => {
+
+      if (answerFinalized) return; // 🔒 DOUBLE SAFETY
+
+      answerFinalized = true;      // ✅ FINALIZE ONCE
+
+      stopMic(); // 🔴 mic OFF only after LONG silence
+
+      let finalText = formatWithPause(speechBuffer);
+      if (!/[.!?]$/.test(finalText)) {
+        finalText += ".";
+      }
+
+      speechBuffer = "";
+      lastSpeechTime = 0;
+
+      sendAnswer(finalText);
+
+    }, USER_LONG_SILENCE_LIMIT);
+  };
+
+
+  recognition.onend = () => {
+    // 🔥 Android auto-end fix
+    if (!interviewFinished && micActive) {
+      try { recognition.start(); } catch {}
+    }
   };
 
   recognition.onerror = () => stopMic();
-  recognition.onend = () => {};
 }
 
+/* =====================================================
+   MIC CONTROL (REFERENCE STYLE)
+===================================================== */
+
 function startMic() {
-
   if (interviewFinished) return;
-
   if (!recognition) initMic();
-
-  try {
-    recognition.start();
-  } catch (e) {
-    console.warn("Mic start blocked");
-  }
+  micActive = true;
+  try { recognition.start(); } catch {}
 }
 
 function stopMic() {
-
+  micActive = false;
   if (recognition) {
     try { recognition.stop(); } catch {}
   }
 }
 
-/* ================= AUDIO PLAY ================= */
+/* =====================================================
+   AUDIO PLAY (BOT OWNS MIC – REFERENCE)
+===================================================== */
 
 function playAudio(b64, isFinal = false) {
+
+  // 🔴 bot bol raha hai → mic OFF
+  stopMic();
 
   if (!b64) {
     if (!isFinal) startMic();
@@ -417,16 +721,20 @@ function playAudio(b64, isFinal = false) {
   iosAudio.load();
 
   iosAudio.onended = () => {
+
+    answerFinalized = false; 
     if (!isFinal && !interviewFinished) {
+      // 🟢 bot finished → mic ON
       startMic();
     }
   };
 
-  iosAudio.play()
-    .catch(() => console.warn("Safari autoplay blocked"));
+  iosAudio.play().catch(() => {});
 }
 
-/* ================= PREDEFINED START ================= */
+/* =====================================================
+   START PREDEFINED
+===================================================== */
 
 async function startPredefined() {
 
@@ -444,22 +752,24 @@ async function startPredefined() {
   });
 
   const d = await r.json();
-
   sessionId = d.session_id;
 
   setupCard.style.display = "none";
   interviewCard.style.display = "block";
+  document.getElementById("endInterviewWrapper").style.display = "block";
 
   addBot(d.question.text);
   playAudio(d.audio);
 }
 
-/* ================= AUTO JD ================= */
+/* =====================================================
+   AUTO JD
+===================================================== */
 
 async function startAutoJD() {
 
   const file = document.getElementById("jdFile").files[0];
-  if (!file) { alert("Upload JD first"); return; }
+  if (!file) return alert("Upload JD first");
 
   await unlockIOS();
   initMic();
@@ -473,7 +783,6 @@ async function startAutoJD() {
   });
 
   const d = await r.json();
-
   sessionId = d.session_id;
 
   setupCard.style.display = "none";
@@ -483,7 +792,9 @@ async function startAutoJD() {
   playAudio(d.audio);
 }
 
-/* ================= SEND ANSWER ================= */
+/* =====================================================
+   SEND ANSWER (UNCHANGED)
+===================================================== */
 
 async function sendAnswer(text) {
 
@@ -499,18 +810,20 @@ async function sendAnswer(text) {
   });
 
   const d = await r.json();
-
   addBot(d.question.text);
 
   if (d.finished) {
-
     interviewFinished = true;
-
     stopMic();
     answer.disabled = true;
     answer.placeholder = "Interview finished";
-
+    document.getElementById("endInterviewWrapper").style.display = "none";
     playAudio(d.audio, true);
+
+    setTimeout(() => {
+      window.location.href = "/";
+    }, 8000); // (user can read final message)
+    document.getElementById("exportCard").style.display = "block";
     return;
   }
 
@@ -528,6 +841,64 @@ function endInterviewUI() {
   answer.disabled = true;
   answer.placeholder = "Interview finished";
 }
+
+
+function exportInterview(format) {
+  alert("Export " + format.toUpperCase() + " (backend next step)");
+}
+
+function skipExport() {
+  document.getElementById("exportCard").innerHTML =
+    "<p style='color:#94a3b8'>Export skipped.</p>";
+}
+
+function exportInterview(fmt) {
+
+  fetch("/api/export/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      session_id: sessionId,
+      format: fmt
+    })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.success) {
+      alert("Exported successfully: " + d.file);
+    } else {
+      alert("Export failed");
+    }
+  });
+}
+
+
+
+/* ===============================
+   END INTERVIEW HANDLER
+================================ */
+
+document.getElementById("endInterviewBtn").onclick = () => {
+
+  // stop mic
+  if (recognition) {
+    try { recognition.stop(); } catch {}
+  }
+
+  interviewFinished = true;
+  sessionId = null;
+
+  // optional: notify backend (safe even if API missing)
+  fetch("/api/v1/end/", { method: "POST" }).catch(() => {});
+
+  // redirect to interview page
+  window.location.href = "/";
+};
+
+
+
+
+
 
 </script>
 
