@@ -406,6 +406,8 @@ SCREENING_TOPICS_COUNT = 5
 HR_MIN = 2
 HR_MAX = 5
 
+
+
 TOTAL_MIN = 15
 TOTAL_MAX = 20
 
@@ -426,13 +428,20 @@ def _contains(text, patterns):
 
 
 
-
-
 # =====================================================
 # MAIN ENTRY
 # =====================================================
 
 def get_next_question(session):
+
+
+    # ---------------- STORE PREVIOUS ANSWER ----------------
+    if session.last_answer and hasattr(session, "last_question"):
+        qid = session.last_question.get("id")
+        if qid and qid not in session.answers:
+            session.answers[qid] = session.last_answer
+
+
 
     # ---------------- INIT SAFETY ----------------
 
@@ -473,8 +482,6 @@ def get_next_question(session):
 
     # ---------------- INTRO ----------------
 
-    # 1️⃣ Greeting + ask about self
-
     if session.phase == "intro":
 
         session.phase = "await_self_intro"
@@ -488,7 +495,7 @@ def get_next_question(session):
         return _q("welcome", text)
 
 
-    # 2️⃣ Capture name from self-intro + ask KnowCraft
+    # ---------------- SELF INTRO ----------------
 
     if session.phase == "await_self_intro":
 
@@ -504,7 +511,7 @@ def get_next_question(session):
         )
 
 
-    # 3️⃣ Role confirmation
+    # ---------------- ROLE CONFIRM ----------------
 
     if session.phase == "ask_knowcraft":
 
@@ -521,32 +528,29 @@ def get_next_question(session):
 
     if session.phase == "role_check":
 
-        if not evaluator.evaluate_role_confirmation(
-            session.last_answer
-        ):
-
-            session.phase = "finished"
-            session.finished = True
-
-            return _q(
-                "exit",
-                f"Thank you {session.candidate_name}. "
-                "Our team will be Contact you. "
-                "Have a great day."
-            )
-
         session.phase = "education"
+
+        return get_next_question(session)
+
 
     # ---------------- EDUCATION ----------------
 
     if session.phase == "education":
 
-        session.phase = "screening_topics"
+        session.phase = "await_education_answer"
 
         return _inc(session, _q(
             "education",
             f"{session.candidate_name}, can you tell me about your education?"
         ))
+
+
+    if session.phase == "await_education_answer":
+
+        session.phase = "screening_topics"
+
+        return get_next_question(session)
+
 
 
     # =====================================================
@@ -560,15 +564,11 @@ def get_next_question(session):
             session.current_topic = None
             session.awaiting_experience = False
 
-               # ---- handle answer to familiarity ----
         if session.awaiting_experience:
 
             session.awaiting_experience = False
             ans = (session.last_answer or "").lower()
 
-            # -------------------------------
-            # HARD NEGATIVE FILTER  ✅ NEW
-            # -------------------------------
             HARD_NO = [
                 "don't know",
                 "do not know",
@@ -581,7 +581,6 @@ def get_next_question(session):
                 "not worked",
             ]
 
-            # SKIP / HARD NO → DROP TOPIC
             if (
                 any(p in ans for p in SKIP_PATTERNS)
                 or any(p in ans for p in HARD_NO)
@@ -600,6 +599,7 @@ def get_next_question(session):
                         )
                     except Exception:
                         session.current_topic = None
+                        session.phase = "hr_llm"
                         return get_next_question(session)
 
                     return _inc(session, _q(
@@ -611,13 +611,16 @@ def get_next_question(session):
                 session.current_topic = None
 
 
-        # ---- new topic ----
         if len(session.topics_asked) < SCREENING_TOPICS_COUNT:
 
             topic = llm_engine.pick_next_topic(
                 role=session.role_label,
                 exclude=session.topics_asked,
             )
+
+            if not topic:
+                session.phase = "hr_llm"
+                return get_next_question(session)
 
             session.topics_asked.append(topic)
             session.current_topic = topic
@@ -629,6 +632,8 @@ def get_next_question(session):
                     topic=topic,
                 )
             except Exception:
+                session.current_topic = None
+                session.phase = "hr_llm"
                 return get_next_question(session)
 
             return _inc(session, _q(
@@ -652,31 +657,17 @@ def get_next_question(session):
         if getattr(session, "hr_limit", None) is None:
             session.hr_limit = random.randint(HR_MIN, HR_MAX)
 
-        # -------------------------------
-        # FIXED FINAL HR QUESTIONS
-        # -------------------------------
         if getattr(session, "final_hr_queue", None) is None:
             session.final_hr_queue = [
-                # 1️⃣ new
                 "What is your current job location?",
-                # 2️⃣ new
                 "Where is your hometown located?",
-
-                # 3️⃣ existing
                 "What is your current notice period, and when would you be available to start if offered the position?",
-                # 4️⃣ existing
-                "What was your last monthl in-hand salary?",
-                # 5️⃣ existing
+                "What was your last month in-hand salary?",
                 "What are your hobbies or interests outside of work?",
-
-                # 6️⃣ new
                 "Are you aware of any AI tools that help you in your daily work?",
                 "Are you Open to work from office ?"
             ]
 
-        # -------------------------------
-        # LLM HR QUESTIONS
-        # -------------------------------
         if session.llm_hr_count < session.hr_limit:
 
             try:
@@ -686,12 +677,8 @@ def get_next_question(session):
             except Exception:
                 text = "What motivates you to join this organization?"
 
-            # -------------------------------
-            # 🚫 BLOCK NOTICE FROM LLM
-            # -------------------------------
             if "notice period" in text.lower():
 
-                # skip LLM notice → go to final HR queue
                 session.phase = "final_hr"
                 return get_next_question(session)
 
@@ -740,7 +727,6 @@ def get_next_question(session):
     raise RuntimeError(f"Unknown phase: {session.phase}")
 
 
-
 # =====================================================
 # HELPERS
 # =====================================================
@@ -763,20 +749,10 @@ def _extract_name(answer):
     text = answer.lower().strip()
 
     patterns = [
-
-        # my name is Rahul / my name is Rahul Patel
         r"my name is ([a-zA-Z ]+)",
-
-        # i am Rahul / i am Rahul Patel
         r"i am ([a-zA-Z ]+)",
-
-        # this is Rahul
         r"this is ([a-zA-Z ]+)",
-
-        # myself Rahul / myself Rahul Patel
         r"myself ([a-zA-Z ]+)",
-
-        # name Rahul
         r"name is ([a-zA-Z ]+)",
     ]
 
@@ -785,14 +761,12 @@ def _extract_name(answer):
         if m:
             name = m.group(1).strip()
 
-            # clean trailing words
             name = re.sub(
                 r"(here|speaking|sir|maam|madam)$",
                 "",
                 name,
             ).strip()
 
-            # capitalize properly
             return " ".join(w.capitalize() for w in name.split())
 
     return None
