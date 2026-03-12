@@ -377,7 +377,7 @@ class StartInterviewAPI(APIView):
             {
                 "session_id": session.session_id,
                 "question": q,
-                "audio": synthesize_to_base64(q["text"]),
+                "audio": safe_tts(q["text"]),
                 "finished": False,
             },
             status=status.HTTP_200_OK
@@ -432,7 +432,7 @@ class StartAutoInterviewAPI(APIView):
             {
                 "session_id": session.session_id,
                 "question": q,
-                "audio": synthesize_to_base64(q["text"]),
+                "audio": safe_tts(q["text"]),
                 "finished": False,
             },
             status=status.HTTP_200_OK
@@ -492,7 +492,7 @@ class NextQuestionAPI(APIView):
         return Response(
             {
                 "question": q,
-                "audio": synthesize_to_base64(q["text"]),
+                "audio": safe_tts(q["text"]),
                 "finished": getattr(session, "finished", False),
             },
             status=status.HTTP_200_OK
@@ -550,3 +550,15 @@ class ExportInterviewAPI(APIView):
             },
             status=status.HTTP_200_OK
         )
+
+def safe_tts(text: str) -> str:
+    """
+    Safe wrapper around Azure TTS.
+    Ensures interview never crashes if Azure fails.
+    """
+    try:
+        audio = synthesize_to_base64(text)
+        return audio if audio else ""
+    except Exception as e:
+        print("TTS error:", e)
+        return ""

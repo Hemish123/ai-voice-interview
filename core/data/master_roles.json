@@ -28,7 +28,7 @@
         },
         {
           "id": "senior_associate_ta",
-          "label": "Senior Associate – TA & People Function",
+          "label": "Senior Associate – Talent Acquisition & People Function",
           "experience": "1–3 years",
           "education": "Bachelor + MBA HR",
           "dataset": "domains/hr_admin/ta_people.json",
@@ -214,7 +214,7 @@
       "roles": [
         {
           "id": "associate_tas",
-          "label": "Associate – TAS / FDD",
+          "label": "Associate – Transaction Advisory Services / Financial Due Diligence",
           "experience": "0–2 years",
           "education": "CA / MBA Finance",
           "dataset": "domains/tas_fdd/associate.json",
@@ -222,7 +222,7 @@
         },
         {
           "id": "senior_associate_tas",
-          "label": "Senior Associate – TAS / FDD",
+          "label": "Senior Associate – Transaction Advisory Services / Financial Due Diligence",
           "experience": "3–5 years",
           "education": "CA / MBA",
           "dataset": "domains/tas_fdd/senior_associate.json",
@@ -230,7 +230,7 @@
         },
         {
           "id": "assistant_manager_tas",
-          "label": "Assistant Manager – TAS / FDD",
+          "label": "Assistant Manager – Transaction Advisory Services / Financial Due Diligence",
           "experience": "5–7 years",
           "education": "CA / MBA",
           "dataset": "domains/tas_fdd/assistant_manager.json",
@@ -238,7 +238,7 @@
         },
         {
           "id": "manager_tas",
-          "label": "Manager – TAS / FDD",
+          "label": "Manager – Transaction Advisory Services / Financial Due Diligence",
           "experience": "8–10 years",
           "education": "CA / MBA",
           "dataset": "domains/tas_fdd/manager.json",
@@ -246,7 +246,7 @@
         },
         {
           "id": "senior_manager_tas",
-          "label": "Senior Manager – TAS / FDD",
+          "label": "Senior Manager – Transaction Advisory Services / Financial Due Diligence",
           "experience": "10+ years",
           "education": "CA / MBA",
           "dataset": "domains/tas_fdd/senior_manager.json",

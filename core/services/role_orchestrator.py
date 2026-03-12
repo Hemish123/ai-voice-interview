@@ -391,6 +391,7 @@
 
 #     return None
 
+
 import random
 import re
 
@@ -451,6 +452,10 @@ def get_next_question(session):
     if getattr(session, "total_limit", None) is None:
         session.total_limit = random.randint(TOTAL_MIN, TOTAL_MAX)
 
+    # ---- Prevent duplicate LLM questions ----
+    if not hasattr(session, "asked_llm_questions"):
+        session.asked_llm_questions = set()
+
     # ---------------- GLOBAL HARD STOP ----------------
 
     HARD_END = [
@@ -458,9 +463,7 @@ def get_next_question(session):
         "stop interview",
         "end the interview",
         "stop the interview",
-        "end",
         "stop",
-        "quit",
         "exit",
     ]
 
@@ -592,15 +595,21 @@ def get_next_question(session):
 
                 if positive:
 
-                    try:
+                    for _ in range(3):
+
                         text = llm_engine.generate_topic_experience_question(
                             role=session.role_label,
                             topic=session.current_topic,
                         )
-                    except Exception:
-                        session.current_topic = None
-                        session.phase = "hr_llm"
-                        return get_next_question(session)
+
+                        normalized = re.sub(r"\W+", " ", text.lower()).strip()
+
+                        if normalized not in session.asked_llm_questions:
+                            session.asked_llm_questions.add(normalized)
+                            break
+
+                    else:
+                        text = f"Can you describe your experience with {session.current_topic}?"
 
                     return _inc(session, _q(
                         f"exp-{session.current_topic}",
@@ -626,15 +635,21 @@ def get_next_question(session):
             session.current_topic = topic
             session.awaiting_experience = True
 
-            try:
+            for _ in range(3):
+
                 text = llm_engine.generate_topic_familiarity_question(
                     role=session.role_label,
                     topic=topic,
                 )
-            except Exception:
-                session.current_topic = None
-                session.phase = "hr_llm"
-                return get_next_question(session)
+
+                normalized = re.sub(r"\W+", " ", text.lower()).strip()
+
+                if normalized not in session.asked_llm_questions:
+                    session.asked_llm_questions.add(normalized)
+                    break
+
+            else:
+                text = f"Are you familiar with {topic}?"
 
             return _inc(session, _q(
                 f"topic-{topic}",
@@ -670,11 +685,22 @@ def get_next_question(session):
 
         if session.llm_hr_count < session.hr_limit:
 
-            try:
+            for _ in range(3):
+
                 text = llm_engine.generate_hr_screening_question(
                     role=session.role_label
                 )
-            except Exception:
+
+                normalized = re.sub(r"\W+", " ", text.lower()).strip()
+
+                print("Generated LLM question:", text)
+                print("Already asked:", session.asked_llm_questions)
+
+                if normalized not in session.asked_llm_questions:
+                    session.asked_llm_questions.add(normalized)
+                    break
+
+            else:
                 text = "What motivates you to join this organization?"
 
             if "notice period" in text.lower():
