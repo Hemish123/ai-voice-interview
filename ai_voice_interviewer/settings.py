@@ -120,7 +120,7 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-CSRF_TRUSTED_OROGINS = [
+CSRF_TRUSTED_ORIGINS = [
     'https://jmsaiinterview-d2bghsgncmdzgyf4.centralindia-01.azurewebsites.net'
 ]
 
