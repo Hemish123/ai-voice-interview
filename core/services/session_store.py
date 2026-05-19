@@ -118,10 +118,10 @@ def save_session(session: InterviewSession):
 # =====================================================
 
 def get_session(session_id: str) -> Optional[InterviewSession]:
-    # 1. Try to fetch from in-memory dictionary
-    session = _SESSIONS.get(session_id)
-    if session:
-        return session
+    # 1. Bypass in-memory dictionary to ensure consistency across multiple workers
+    # session = _SESSIONS.get(session_id)
+    # if session:
+    #     return session
 
     # 2. Fallback to loading from database state_json
     try:
