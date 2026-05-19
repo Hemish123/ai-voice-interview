@@ -437,7 +437,7 @@ def get_next_question(session):
 
 
     # ---------------- STORE PREVIOUS ANSWER ----------------
-    if session.last_answer and hasattr(session, "last_question"):
+    if session.last_answer and getattr(session, "last_question", None) is not None:
         qid = session.last_question.get("id")
         if qid and qid not in session.answers:
             session.answers[qid] = session.last_answer
