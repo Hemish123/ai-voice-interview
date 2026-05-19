@@ -214,6 +214,7 @@ from core.services.tts import synthesize_to_base64
 from core.services.session_store import (
     create_session,
     get_session,
+    save_session,
 )
 from core.services import exporter
 
@@ -372,6 +373,7 @@ class StartInterviewAPI(APIView):
         )
 
         q = get_next_question(session)
+        save_session(session)
 
         return Response(
             {
@@ -427,6 +429,7 @@ class StartAutoInterviewAPI(APIView):
         )
 
         q = get_next_question(session)
+        save_session(session)
 
         return Response(
             {
@@ -488,6 +491,8 @@ class NextQuestionAPI(APIView):
             answer_text=answer,
             question_index=question_index,
         )
+
+        save_session(session)
 
         return Response(
             {
