@@ -470,6 +470,30 @@ class NextQuestionAPI(APIView):
         session_id = str(data["session_id"])
         answer = data.get("answer", "")
 
+        # ---------------- PREVENT DUPLICATE / RAPID-FIRE CONCURRENT REQUESTS ----------------
+        from core.models import InterviewTurn
+        from django.utils import timezone
+        from datetime import timedelta
+
+        # Check if the exact same answer was processed within the last 4 seconds
+        last_turn = InterviewTurn.objects.filter(session_id=session_id).order_by("-created_at").first()
+        if last_turn and last_turn.answer_text == answer and answer.strip() != "":
+            if timezone.now() - last_turn.created_at < timedelta(seconds=4):
+                session = get_session(session_id)
+                q = {
+                    "id": getattr(session, "last_question", {}).get("id", "welcome") if session else "welcome",
+                    "text": last_turn.question_text,
+                    "source": "system"
+                }
+                return Response(
+                    {
+                        "question": q,
+                        "audio": safe_tts(last_turn.question_text),
+                        "finished": getattr(session, "finished", False) if session else False,
+                    },
+                    status=status.HTTP_200_OK
+                )
+
         session = get_session(session_id)
 
         if not session:
