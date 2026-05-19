@@ -8,13 +8,6 @@ import uuid
 from django.conf import settings
 
 # =====================================================
-# SESSIONS STORAGE DIRECTORY
-# =====================================================
-
-SESSIONS_DIR = os.path.join(settings.BASE_DIR, "sessions")
-os.makedirs(SESSIONS_DIR, exist_ok=True)
-
-# =====================================================
 # IN-MEMORY SESSION REGISTRY
 # =====================================================
 
@@ -69,9 +62,6 @@ def create_session(company: str, role_label: str, designation: str):
 
     # ✅ STORE SESSION
     _SESSIONS[session.session_id] = session
-    
-    # Save to disk initially
-    save_session(session)
 
     return session
 
@@ -83,6 +73,9 @@ def create_session(company: str, role_label: str, designation: str):
 def save_session(session: InterviewSession):
     if not session:
         return
+
+    # Update in-memory registry cache
+    _SESSIONS[session.session_id] = session
 
     data = {
         "session_id": session.session_id,
@@ -109,15 +102,15 @@ def save_session(session: InterviewSession):
     asked_llm_questions = getattr(session, "asked_llm_questions", set())
     data["asked_llm_questions"] = list(asked_llm_questions)
 
-    filepath = os.path.join(SESSIONS_DIR, f"{session.session_id}.json")
+    # Save to Django database
     try:
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4, ensure_ascii=False)
+        from core.models import InterviewSession as DBInterviewSession
+        db_sess = DBInterviewSession.objects.filter(id=session.session_id).first()
+        if db_sess:
+            db_sess.state_json = json.dumps(data, ensure_ascii=False)
+            db_sess.save()
     except Exception as e:
-        print(f"Error saving session {session.session_id} to file: {e}")
-
-    # Update in-memory registry cache as well
-    _SESSIONS[session.session_id] = session
+        print(f"Error saving session {session.session_id} to database: {e}")
 
 
 # =====================================================
@@ -130,12 +123,12 @@ def get_session(session_id: str) -> Optional[InterviewSession]:
     if session:
         return session
 
-    # 2. Fallback to loading from disk JSON
-    filepath = os.path.join(SESSIONS_DIR, f"{session_id}.json")
-    if os.path.exists(filepath):
-        try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                data = json.load(f)
+    # 2. Fallback to loading from database state_json
+    try:
+        from core.models import InterviewSession as DBInterviewSession
+        db_sess = DBInterviewSession.objects.filter(id=session_id).first()
+        if db_sess and db_sess.state_json:
+            data = json.loads(db_sess.state_json)
 
             session = InterviewSession(
                 session_id=data["session_id"],
@@ -164,7 +157,7 @@ def get_session(session_id: str) -> Optional[InterviewSession]:
             # Store back in in-memory registry
             _SESSIONS[session_id] = session
             return session
-        except Exception as e:
-            print(f"Error loading session {session_id} from file: {e}")
+    except Exception as e:
+        print(f"Error loading session {session_id} from database: {e}")
 
     return None
