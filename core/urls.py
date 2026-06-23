@@ -30,6 +30,7 @@ from core.views import (
     StartAutoInterviewAPI,
     NextQuestionAPI,
     ExportInterviewAPI,
+    EndInterviewAPI,
     index,
 )
 
@@ -43,4 +44,5 @@ urlpatterns = [
     path("api/v1/start-auto/", StartAutoInterviewAPI.as_view()),
     path("api/v1/next/", NextQuestionAPI.as_view()),
     path("api/v1/export/", ExportInterviewAPI.as_view()),
+    path("api/v1/end/", EndInterviewAPI.as_view()),
 ]

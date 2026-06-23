@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -286,6 +287,8 @@ label {
 }
 
 select,
+input[type=text],
+input[type=email],
 input[type=file] {
   width: 100%;
   margin-top: 0;
@@ -671,11 +674,19 @@ button:disabled::before {
   overscroll-behavior: contain;
 }
 
-/* ---------- Prevent zoom on input (iOS) ---------- */
-input,
-select,
-button {
-  font-size: 16px;
+/* Logo placement */
+.logo-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 10px;
+  margin-bottom: 25px;
+  width: 100%;
+}
+.top-logo {
+  height: 55px;
+  width: auto;
+  object-fit: contain;
 }
 
 </style>
@@ -687,6 +698,11 @@ button {
 <div class="bg-noise"></div>
 
 <div class="container">
+
+  <!-- Logo centered above header -->
+  <div class="logo-container">
+    <img src="{% static logo_filename %}" alt="KnowCraft Logo" class="top-logo">
+  </div>
 
   <div class="header">
     <div class="header-badge">
@@ -717,6 +733,15 @@ button {
         <select id="role" disabled>
           <option value="">Select Role</option>
         </select>
+
+        <label>Candidate Name</label>
+        <input type="text" id="candidateName" placeholder="Enter your full name" style="margin-bottom: 20px;" required />
+
+        <label>Candidate Email</label>
+        <input type="email" id="candidateEmail" placeholder="Enter your email address" style="margin-bottom: 20px;" required />
+
+        <label>Candidate Phone Number</label>
+        <input type="text" id="candidatePhone" placeholder="Enter your phone number" style="margin-bottom: 20px;" required />
 
         <button id="startBtn" disabled onclick="showLoading(); startPredefined()">
           Start Interview
@@ -757,6 +782,20 @@ button {
 
   <div id="endInterviewWrapper" style="display:none; text-align:center; margin-top:16px;">
     <button id="endInterviewBtn" class="end-btn">⛔ End Interview</button>
+  </div>
+
+  <!-- ================= RESULT CARD ================= -->
+  <div class="card" id="resultCard" style="display:none; margin-top:20px; text-align:center;">
+    <h3 style="color:var(--accent-teal); font-size:24px; margin-bottom:16px;">🏆 Interview Completed!</h3>
+    <div style="margin: 20px auto; width: 100px; height: 100px; border-radius: 50%; background: rgba(0, 184, 148, 0.1); border: 3px solid var(--accent-teal); display: flex; align-items: center; justify-content: center;">
+      <span id="resultScore" style="font-size: 28px; font-weight: 800; color: var(--accent-teal);">0</span>
+    </div>
+    <h4 style="font-size:16px; font-weight:600; color:var(--text-primary); margin-bottom:8px;">AI Screening Match Score</h4>
+    <p id="resultFeedback" style="color:var(--text-secondary); font-size:14.5px; line-height:1.6; padding: 0 10px; margin-bottom:24px; text-align: left;"></p>
+    <div style="background: rgba(108, 92, 231, 0.05); border: 1px dashed rgba(108, 92, 231, 0.3); border-radius: 12px; padding: 12px 16px; margin-bottom:24px; font-size:13.5px; color:var(--accent-primary);">
+      📬 A detailed PDF screening report with the complete Q&A transcript has been sent to your email.
+    </div>
+    <button onclick="window.location.href = '/'" style="max-width: 200px;">Return to Home</button>
   </div>
 
 </div>
@@ -1232,6 +1271,24 @@ function playAudio(b64, isFinal = false) {
 
 async function startPredefined() {
 
+  const nameVal = document.getElementById("candidateName").value.trim();
+  const emailVal = document.getElementById("candidateEmail").value.trim();
+  const phoneVal = document.getElementById("candidatePhone").value.trim();
+
+  if (!nameVal || !emailVal || !phoneVal) {
+    alert("Please enter Candidate Name, Email, and Phone Number before starting the interview.");
+    hideLoading();
+    return;
+  }
+
+  // Simple email validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(emailVal)) {
+    alert("Please enter a valid email address.");
+    hideLoading();
+    return;
+  }
+
   await unlockIOS();
   initMic();
 
@@ -1241,7 +1298,10 @@ async function startPredefined() {
     body: JSON.stringify({
       company: "KnowCraft",
       role_label: role.options[role.selectedIndex].text,
-      designation: role.value
+      designation: role.value,
+      candidate_name: nameVal,
+      candidate_email: emailVal,
+      candidate_phone: phoneVal
     })
   });
 
@@ -1281,6 +1341,7 @@ async function startAutoJD() {
 
   setupCard.style.display = "none";
   interviewCard.style.display = "block";
+  document.getElementById("endInterviewWrapper").style.display = "block";
 
   addBot(d.question.text);
   playAudio(d.audio);
@@ -1317,9 +1378,8 @@ async function sendAnswer(text) {
     playAudio(d.audio, true);
 
     setTimeout(() => {
-      window.location.href = "/";
-    }, 8000); // (user can read final message)
-    document.getElementById("exportCard").style.display = "block";
+      showResultCard(d.score, d.feedback);
+    }, 6000);
     return;
   }
 
@@ -1374,7 +1434,11 @@ function exportInterview(fmt) {
    END INTERVIEW HANDLER
 ================================ */
 
-document.getElementById("endInterviewBtn").onclick = () => {
+document.getElementById("endInterviewBtn").onclick = async () => {
+  if (!sessionId) {
+    console.warn("No active session to end or already ending.");
+    return;
+  }
 
   // stop mic
   if (recognition) {
@@ -1382,14 +1446,34 @@ document.getElementById("endInterviewBtn").onclick = () => {
   }
 
   interviewFinished = true;
+  showLoading();
+
+  const currentSessionId = sessionId;
   sessionId = null;
 
-  // optional: notify backend (safe even if API missing)
-  fetch("/api/v1/end/", { method: "POST" }).catch(() => {});
-
-  // redirect to interview page
-  window.location.href = "/";
+  try {
+    await fetch("/api/v1/end/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: currentSessionId })
+    });
+  } catch (err) {
+    console.error("Error ending interview:", err);
+  } finally {
+    hideLoading();
+    window.location.href = "/";
+  }
 };
+
+function showResultCard(score, feedback) {
+  setupCard.style.display = "none";
+  interviewCard.style.display = "none";
+  document.getElementById("endInterviewWrapper").style.display = "none";
+  
+  document.getElementById("resultScore").innerText = score || "0";
+  document.getElementById("resultFeedback").innerText = feedback || "No feedback available.";
+  document.getElementById("resultCard").style.display = "block";
+}
 
 
 </script>

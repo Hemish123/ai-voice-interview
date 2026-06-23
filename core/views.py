@@ -217,6 +217,7 @@ from core.services.session_store import (
     save_session,
 )
 from core.services import exporter
+from core.services.email_service import get_logo_filename
 
 from core.models import (
     InterviewSession,
@@ -245,7 +246,8 @@ MASTER_FILE = os.path.join(
 # =====================================================
 
 def index(request):
-    return render(request, "index.html")
+    logo_filename = get_logo_filename()
+    return render(request, "index.html", {"logo_filename": f"core/{logo_filename}"})
 
 # =====================================================
 # HELPERS
@@ -361,6 +363,9 @@ class StartInterviewAPI(APIView):
             company=data["company"],
             role_label=data.get("role_label"),
             designation=data["designation"],
+            candidate_name=data.get("candidate_name"),
+            candidate_email=data.get("candidate_email"),
+            candidate_phone=data.get("candidate_phone"),
         )
 
         InterviewSession.objects.create(
@@ -369,6 +374,9 @@ class StartInterviewAPI(APIView):
             company=data["company"],
             role_label=data.get("role_label"),
             designation=data["designation"],
+            candidate_name=data.get("candidate_name"),
+            candidate_email=data.get("candidate_email"),
+            candidate_phone=data.get("candidate_phone"),
             finished=False,
         )
 
@@ -518,11 +526,36 @@ class NextQuestionAPI(APIView):
 
         save_session(session)
 
+        # check if finished and run scoring/emailing!
+        is_finished = getattr(session, "finished", False)
+        score = None
+        feedback = None
+        
+        if is_finished:
+            from core.services.evaluation_service import evaluate_interview_transcript
+            from core.services.email_service import generate_and_send_interview_report
+            
+            evaluation = evaluate_interview_transcript(session_id, session.role_label)
+            score = evaluation["score"]
+            feedback = evaluation["feedback"]
+            
+            db_sess = InterviewSession.objects.filter(id=session_id).first()
+            if db_sess:
+                db_sess.finished = True
+                db_sess.score = score
+                db_sess.feedback = feedback
+                db_sess.save()
+                
+            turns = InterviewTurn.objects.filter(session_id=session_id).order_by('question_index')
+            generate_and_send_interview_report(session, turns, score, feedback)
+
         return Response(
             {
                 "question": q,
                 "audio": safe_tts(q["text"]),
-                "finished": getattr(session, "finished", False),
+                "finished": is_finished,
+                "score": score,
+                "feedback": feedback,
             },
             status=status.HTTP_200_OK
         )
@@ -591,3 +624,48 @@ def safe_tts(text: str) -> str:
     except Exception as e:
         print("TTS error:", e)
         return ""
+
+
+# =====================================================
+# API: END INTERVIEW
+# =====================================================
+
+class EndInterviewAPI(APIView):
+
+    authentication_classes = [CsrfExemptSessionAuthentication]
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        session_id = request.data.get("session_id")
+        if not session_id:
+            return Response({"error": "session_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        session = get_session(str(session_id))
+        if not session:
+            return Response({"error": "Invalid session"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        session.finished = True
+        save_session(session)
+        
+        from core.services.evaluation_service import evaluate_interview_transcript
+        from core.services.email_service import generate_and_send_interview_report
+        
+        evaluation = evaluate_interview_transcript(session.session_id, session.role_label)
+        score = evaluation["score"]
+        feedback = evaluation["feedback"]
+        
+        db_sess = InterviewSession.objects.filter(id=session.session_id).first()
+        if db_sess:
+            db_sess.finished = True
+            db_sess.score = score
+            db_sess.feedback = feedback
+            db_sess.save()
+            
+        turns = InterviewTurn.objects.filter(session_id=session.session_id).order_by('question_index')
+        generate_and_send_interview_report(session, turns, score, feedback)
+        
+        return Response({
+            "success": True,
+            "score": score,
+            "feedback": feedback
+        }, status=status.HTTP_200_OK)

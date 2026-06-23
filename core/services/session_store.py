@@ -32,6 +32,8 @@ class InterviewSession:
     finished: bool = False
 
     candidate_name: Optional[str] = None
+    candidate_email: Optional[str] = None
+    candidate_phone: Optional[str] = None
 
     last_answer: Optional[str] = None
 
@@ -51,13 +53,16 @@ class InterviewSession:
 # FACTORY
 # =====================================================
 
-def create_session(company: str, role_label: str, designation: str):
+def create_session(company: str, role_label: str, designation: str, candidate_name: Optional[str] = None, candidate_email: Optional[str] = None, candidate_phone: Optional[str] = None):
 
     session = InterviewSession(
         session_id=str(uuid.uuid4()),
         company=company,
         role_label=role_label,
         designation=designation,
+        candidate_name=candidate_name,
+        candidate_email=candidate_email,
+        candidate_phone=candidate_phone,
     )
 
     # ✅ STORE SESSION
@@ -85,6 +90,8 @@ def save_session(session: InterviewSession):
         "phase": getattr(session, "phase", "intro"),
         "finished": getattr(session, "finished", False),
         "candidate_name": getattr(session, "candidate_name", None),
+        "candidate_email": getattr(session, "candidate_email", None),
+        "candidate_phone": getattr(session, "candidate_phone", None),
         "last_answer": getattr(session, "last_answer", None),
         "answers": getattr(session, "answers", {}),
         "topics_asked": getattr(session, "topics_asked", []),
@@ -138,6 +145,8 @@ def get_session(session_id: str) -> Optional[InterviewSession]:
                 phase=data.get("phase", "intro"),
                 finished=data.get("finished", False),
                 candidate_name=data.get("candidate_name"),
+                candidate_email=data.get("candidate_email"),
+                candidate_phone=data.get("candidate_phone"),
                 last_answer=data.get("last_answer"),
                 answers=data.get("answers", {}),
                 topics_asked=data.get("topics_asked", []),

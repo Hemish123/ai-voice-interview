@@ -12,6 +12,9 @@ class StartInterviewSerializer(serializers.Serializer):
         max_length=100,
         default="KnowCraft"
     )
+    candidate_name = serializers.CharField(max_length=150, required=True)
+    candidate_email = serializers.EmailField(required=True)
+    candidate_phone = serializers.CharField(max_length=50, required=True)
 
 
 class StartAutoInterviewSerializer(serializers.Serializer):

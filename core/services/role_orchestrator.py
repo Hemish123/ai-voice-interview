@@ -489,8 +489,13 @@ def get_next_question(session):
 
         session.phase = "await_self_intro"
 
+        if getattr(session, "candidate_name", None):
+            greeting = f"Hello {session.candidate_name}. Welcome to {session.company}."
+        else:
+            greeting = f"Hello and welcome to {session.company}."
+
         text = (
-            f"Hello and welcome to {session.company}. "
+            f"{greeting} "
             f"This interview is for the {session.role_label} role. "
             "Now please tell me about yourself."
         )

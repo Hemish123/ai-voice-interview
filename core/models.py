@@ -35,6 +35,12 @@ class InterviewSession(models.Model):
 
     finished = models.BooleanField(default=False)
 
+    candidate_name = models.CharField(max_length=150, null=True, blank=True)
+    candidate_email = models.EmailField(null=True, blank=True)
+    candidate_phone = models.CharField(max_length=50, null=True, blank=True)
+    score = models.IntegerField(null=True, blank=True)
+    feedback = models.TextField(null=True, blank=True)
+
     state_json = models.TextField(
         null=True,
         blank=True
